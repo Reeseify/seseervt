@@ -1,10 +1,9 @@
 
-/* Reese's TV service worker: cache images on-device */
-const VERSION = 'v1.0.0';
+/* Reese's TV service worker: cache images on-device (patched) */
+const VERSION = 'v1.0.1';
 const CORE_CACHE = `core-${VERSION}`;
 const IMG_CACHE = `img-${VERSION}`;
 
-// Core assets to precache (add others if you host on same origin)
 const CORE_ASSETS = [
   './',
   './index.html','./browse.html','./library.html','./show.html','./watch.html','./about.html',
@@ -20,18 +19,15 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    (async () => {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => {
-        if (k !== CORE_CACHE && k !== IMG_CACHE) return caches.delete(k);
-      }));
-      await self.clients.claim();
-    })()
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => {
+      if (k !== CORE_CACHE && k !== IMG_CACHE) return caches.delete(k);
+    }));
+    await self.clients.claim();
+  })());
 });
 
-// Helper to detect "image-like" requests we want to cache
 function isImageRequest(req) {
   const url = new URL(req.url);
   if (req.destination === 'image') return true;
@@ -43,11 +39,23 @@ function isImageRequest(req) {
   );
 }
 
-// Cache-First for images (including cross-origin/opaque).
-// Stale-While-Revalidate for core same-origin GET requests.
+// Ignore Drive JSON listing calls entirely (let network handle & CORS apply)
+function isDriveJsonList(req) {
+  const url = new URL(req.url);
+  return url.hostname.endsWith('googleapis.com')
+    && url.pathname.startsWith('/drive/v3/files')
+    && !url.search.includes('alt=media')
+    && !/thumbnail/i.test(url.href);
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+
+  if (isDriveJsonList(request)) {
+    // Do not intercept Drive API JSON
+    return;
+  }
 
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
@@ -57,19 +65,30 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(IMG_CACHE);
       const cached = await cache.match(request, { ignoreVary: true, ignoreSearch: false });
       if (cached) {
-        // Try to update in background
-        event.waitUntil(fetch(request, { mode: 'no-cors' }).then(res => cache.put(request, res.clone())).catch(()=>{}));
+        // Try to update in background without breaking if opaque/cache fails
+        event.waitUntil((async () => {
+          try {
+            const res = await fetch(request);
+            if (res && (res.ok || res.type === 'opaque')) {
+              const key = (request.mode === 'no-cors' || res.type === 'opaque')
+                ? new Request(request.url, { mode: 'no-cors' })
+                : request;
+              await cache.put(key, res.clone());
+            }
+          } catch {}
+        })());
         return cached;
       }
       try {
-        const res = await fetch(request, { mode: 'no-cors' });
-        if (res && res.type !== 'error') {
-          // Can cache opaque responses
-          cache.put(request, res.clone());
+        const res = await fetch(request);
+        if (res && (res.ok || res.type === 'opaque')) {
+          const key = (request.mode === 'no-cors' || res.type === 'opaque')
+            ? new Request(request.url, { mode: 'no-cors' })
+            : request;
+          await cache.put(key, res.clone());
         }
         return res;
       } catch (e) {
-        // Optional: offline fallback image
         return cached || Response.error();
       }
     })());
@@ -77,12 +96,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (sameOrigin) {
-    // S-W-R for app shell/static assets
     event.respondWith((async () => {
       const cache = await caches.open(CORE_CACHE);
       const cached = await cache.match(request);
       const fetchPromise = fetch(request).then(res => {
-        cache.put(request, res.clone());
+        cache.put(request, res.clone()).catch(()=>{});
         return res;
       }).catch(() => cached);
       return cached || fetchPromise;
