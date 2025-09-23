@@ -34,25 +34,19 @@ const Drive = (()=>{
     const studios = [];
     for(const studioRoot of studioFolderIds){
       const children = await listChildren(apiKey, studioRoot);
-      // Only treat FOLDERS as Studios at root
       const studioFolders = children.filter(isFolder);
       for(const sf of studioFolders){
         const studio = { id: sf.id, name: sf.name, shows: [] };
-        // shows = subfolders of a studio
         const showFolders = await listChildren(apiKey, sf.id);
         for(const sh of showFolders.filter(isFolder)){
           const files = await listChildren(apiKey, sh.id);
           const seasons = files.filter(isFolder).filter(f=>isSeasonName(f.name));
-          // logo in show root
+          // find logo in show root
           let logo = null;
           for(const f of files){
-            if(isLogoName(f.name)){
-              logo = mediaUrl(f.id, apiKey);
-              break;
-            }
+            if(isLogoName(f.name)){ logo = mediaUrl(f.id, apiKey); break; }
           }
-          // Build episodes grouped by season (or "Season 1" implicit if no seasons)
-          const show = { id: sh.id, name: sh.name, logo, seasons:[] };
+          const show = { id: sh.id, name: sh.name, logo, seasons: [], seasonCount: 0, studioId: studio.id };
           if(seasons.length){
             seasons.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:"base"}));
             for(const sn of seasons){
@@ -68,38 +62,43 @@ const Drive = (()=>{
               show.seasons.push({ id: sn.id, name: sn.name, episodes: eps });
             }
           } else {
-            // No explicit season folders—treat videos in show root as Season 1
             const vids = files.filter(isVideo);
-            const eps = vids.map(v=> ({
-              id: v.id,
-              name: v.name.replace(/\.[^.]+$/,""),
-              embed: `https://drive.google.com/file/d/${v.id}/preview`,
-              src: mediaUrl(v.id, apiKey),
-              thumb: v.thumbnailLink || thumbUrl(v.id),
-              modified: v.modifiedTime
-            }));
-            if(eps.length){
+            if(vids.length){
+              const eps = vids.map(v=> ({
+                id: v.id,
+                name: v.name.replace(/\.[^.]+$/,""),
+                embed: `https://drive.google.com/file/d/${v.id}/preview`,
+                src: mediaUrl(v.id, apiKey),
+                thumb: v.thumbnailLink || thumbUrl(v.id),
+                modified: v.modifiedTime
+              }));
               show.seasons.push({ id: sh.id+"-s1", name: "Season 1", episodes: eps });
             }
           }
           show.seasonCount = show.seasons.length;
-          studios.push(studio) && studio.shows.push(show);
+          studio.shows.push(show);
         }
-        // If studio had zero show folders, still include it (empty) to show chips
+        // push each studio exactly once
         studios.push(studio);
       }
     }
-    // Flatten unique studios (avoid duplicates if multiple roots)
-    const map = new Map();
+    // dedupe studios by id just in case roots overlap
+    const uniq = new Map();
     for(const s of studios){
-      if(!map.has(s.id)) map.set(s.id, s);
-      else{
-        // merge shows
-        const cur = map.get(s.id);
-        cur.shows.push(...(s.shows||[]));
+      if(!uniq.has(s.id)) uniq.set(s.id, s);
+      else {
+        uniq.get(s.id).shows.push(...s.shows);
       }
     }
-    return Array.from(map.values());
+    // also dedupe shows within each studio by id
+    for(const s of uniq.values()){
+      const m = new Map();
+      for(const sh of s.shows){
+        if(!m.has(sh.id)) m.set(sh.id, sh);
+      }
+      s.shows = Array.from(m.values());
+    }
+    return Array.from(uniq.values());
   }
 
   async function loadFromConfig(config){

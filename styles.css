@@ -49,13 +49,13 @@ img{display:block; max-width:100%}
 }
 .search input:focus{box-shadow:var(--ring); border-color:transparent}
 
-.container{max-width:1280px; margin-inline:auto; padding: 1.25rem clamp(12px,4vw,28px);}
+.container{max-width:1600px; margin-inline:auto; padding: 1.25rem clamp(12px,4vw,28px);}
 
 .h1{font-size:clamp(22px, 3vw, 30px); font-weight:800; letter-spacing:.2px; margin: 1.25rem 0 .25rem}
 .sub{color:var(--muted); margin:0 0 1rem}
 
 .carousel{display:flex; gap:14px; overflow:auto; padding-bottom:6px; scroll-snap-type:x mandatory}
-.tile{scroll-snap-align:start; display:block; position:relative; width:260px; border-radius:18px; overflow:hidden;
+.tile{scroll-snap-align:start; display:block; position:relative; width:300px; border-radius:18px; overflow:hidden;
   background:#0f1327; box-shadow: var(--shadow); border:1px solid rgba(255,255,255,.06)}
 .tile img{width:100%; aspect-ratio:16/9; object-fit:cover; background:#0f1327}
 .tile .thumb{width:100%; aspect-ratio:16/9}
