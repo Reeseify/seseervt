@@ -31,7 +31,7 @@ const Drive = (()=>{
         }else if(isVideo(f.mimeType)){
           files.push(f);
         }else if(logoName(f.name)){
-          logo = `https://drive.google.com/uc?export=view&id=${f.id}`;
+          logo = mediaUrl(f.id, apiKey);
         }
       }
       pageToken = data.nextPageToken || "";
