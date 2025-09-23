@@ -55,7 +55,7 @@ img{display:block; max-width:100%}
 .sub{color:var(--muted); margin:0 0 1rem}
 
 .carousel{display:flex; gap:14px; overflow:auto; padding-bottom:6px; scroll-snap-type:x mandatory}
-.tile{scroll-snap-align:start; display:block; position:relative; width:300px; border-radius:18px; overflow:hidden;
+.tile{scroll-snap-align:start; display:block; position:relative; border-radius:18px; overflow:hidden;
   background:#0f1327; box-shadow: var(--shadow); border:1px solid rgba(255,255,255,.06)}
 .tile img{width:100%; aspect-ratio:16/9; object-fit:cover; background:#0f1327}
 .tile .thumb{width:100%; aspect-ratio:16/9}
@@ -63,7 +63,7 @@ img{display:block; max-width:100%}
 .tile .label{position:absolute; left:10px; bottom:10px; right:10px; display:flex; justify-content:space-between; align-items:center; gap:8px}
 .badge{font-size:12px; opacity:.9; padding:.2rem .5rem; background:rgba(255,255,255,.08); border-radius:8px}
 
-.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px}
 .card{border:1px solid rgba(255,255,255,.07); border-radius:16px; overflow:hidden; background:#0f1327}
 .card .thumb{aspect-ratio:16/9; background:#0c1022}
 .card-body{padding:.75rem}
@@ -97,3 +97,8 @@ body[data-page="library"] #library-grid{ gap: 22px; margin-top: 8px; }
 
 /* Slightly larger labels to match spacing */
 .tile .label{ left:14px; right:14px; bottom:12px; }
+
+
+/* Contextual tile sizing to avoid overlap */
+.carousel .tile{ width:300px; flex:0 0 auto; }
+.grid .tile{ width:100%; }
