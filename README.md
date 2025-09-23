@@ -73,3 +73,8 @@ This site can auto-list videos from public Drive folders using a **Drive API key
 
 ## Alternative: Apps Script JSON feed (private or more control)
 If you don’t want an API key on the client, deploy a tiny **Google Apps Script** that lists a folder and returns JSON, then point the site at that endpoint instead of `config.json`. I can generate that script on request.
+
+
+### Studios & Shows
+- Put a **logo.png** or **logo.jpg** inside any studio/show folder (optional). The site will use it for the tile. If missing, it falls back to text.
+- `browse.html` shows Studios → Shows → Videos navigation.

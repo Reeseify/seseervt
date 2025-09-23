@@ -169,3 +169,90 @@ function wireCommon(){
   if(state.page==='watch') renderWatch(data);
   if(state.page==='library') renderLibrary(data);
 })();
+
+
+// --- Extra rendering for Studios and hierarchical browse ---
+function studioTile(st){
+  const logo = st.logo || 'img/logo-full.png';
+  return `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(st.id)}" title="${st.name}">
+    <img src="${logo}" alt="${st.name} logo" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fallback',textContent:'${st.name}'}))">
+  </a>`;
+}
+function showTile(sh){
+  const logo = sh.logo || 'img/logo-full.png';
+  return `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(sh.id)}" title="${sh.name}">
+    <img src="${logo}" alt="${sh.name} logo" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fallback',textContent:'${sh.name}'}))">
+  </a>`;
+}
+
+function renderStudiosHome(data){
+  if(!data.studios) return;
+  const sec = document.createElement('section');
+  sec.className='section carousel';
+  sec.innerHTML = `<h3>Studios</h3><div class="row" id="studios-row"></div>`;
+  document.querySelector('.container').insertBefore(sec, document.querySelector('#latest'));
+  const row = document.getElementById('studios-row');
+  row.innerHTML = data.studios.map(studioTile).join('');
+}
+
+async function renderBrowsePage(data){
+  const params = new URLSearchParams(location.search);
+  const folder = params.get('folder'); // if null, show studios
+  const crumbs = document.getElementById('crumbs');
+  const foldersWrap = document.getElementById('folders');
+  const videosWrap = document.getElementById('videos');
+  const makeCrumb = (label, href) => `<a ${href?`href="${href}"`:''}>${label}</a>`;
+
+  if(!folder){
+    crumbs.innerHTML = makeCrumb('Studios');
+    foldersWrap.innerHTML = data.studios.map(studioTile).join('');
+    videosWrap.innerHTML = '';
+    return;
+  }
+  // Try to match studio or show
+  const studio = (data.studios||[]).find(s=> s.id===folder);
+  if(studio){
+    crumbs.innerHTML = makeCrumb('Studios','browse.html') + ' / ' + makeCrumb(studio.name);
+    foldersWrap.innerHTML = studio.shows.map(showTile).join('');
+    videosWrap.innerHTML = studio.videos.map(card).join('');
+    return;
+  }
+  // maybe it's a show id; find in all studios
+  let show=null, parentStudio=null;
+  for(const s of (data.studios||[])){
+    const found = s.shows.find(x=>x.id===folder);
+    if(found){ show=found; parentStudio=s; break; }
+  }
+  if(show){
+    crumbs.innerHTML = makeCrumb('Studios','browse.html') + ' / ' + makeCrumb(parentStudio.name, `browse.html?folder=${parentStudio.id}`) + ' / ' + makeCrumb(show.name);
+    foldersWrap.innerHTML = '';
+    videosWrap.innerHTML = show.videos.map(card).join('');
+    return;
+  }
+  // Fallback: list folder children generically
+  const cfg = await (await fetch('config.json')).json().catch(()=>null);
+  if(cfg){
+    try{
+      const fdata = await Drive.readFolder(cfg.apiKey, folder);
+      const fakeShows = (fdata.folders||[]).map(f => ({id:f.id, name:f.name, logo:null}));
+      crumbs.innerHTML = makeCrumb('Browse');
+      foldersWrap.innerHTML = fakeShows.map(showTile).join('');
+      videosWrap.innerHTML = (fdata.videos||[]).map(v=>card({id:v.id,title:v.name, published:(v.modifiedTime||'').slice(0,10), thumb:v.thumbnailLink, source:'drive'})).join('');
+    }catch(e){ console.warn(e); }
+  }
+}
+
+// Hook into existing init
+(async function extraInit(){
+  if(!state?.data) return;
+})();
+
+// Patch main init to insert Studios on home and support browse page
+(async function init2(){
+  // Wait a microtask for previous init to populate
+  setTimeout(async ()=>{
+    const data = await loadData();
+    if(document.body.dataset.page==='home') renderStudiosHome(data);
+    if(document.body.dataset.page==='browse') renderBrowsePage(data);
+  }, 0);
+})();
