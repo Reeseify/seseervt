@@ -174,3 +174,11 @@ async function renderWatch(){
 }
 
 document.addEventListener("DOMContentLoaded", boot);
+
+
+// Register service worker to cache images & core assets
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(console.error);
+  });
+}
