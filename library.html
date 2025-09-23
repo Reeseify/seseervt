@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Library — Reese’s TV</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#273278" />
+  <link rel="icon" href="img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="img/favicon.png" />
+  <link rel="preload" href="img/logo-full.png" as="image" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
+
+</head>
+<body data-page="library">
+  <header class="topbar">
+    <div class="brand">
+      <img src="img/favicon.png" alt="Reese's TV logo" class="brand-icon" />
+      <img src="img/logo-full.png" alt="Reese's TV" class="brand-wordmark" />
+    </div>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search videos…" autocomplete="off" />
+    </div>
+    <nav class="nav">
+      <a href="./" class="nav-link">Home</a>
+      <a href="library.html" class="nav-link">Library</a>
+      <a href="about.html" class="nav-link">About</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h2>Browse</h2>
+      <div id="filters" class="filters"></div>
+      <div id="library-grid" class="video-grid"></div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Reese’s TV — Built with ❤️ and GitHub Pages.</p>
+  </footer>
+
+</body>
+</html>

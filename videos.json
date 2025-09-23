@@ -1,0 +1,26 @@
+{
+  "videos": [
+    {
+      "id": "1abcEXAMPLEidReplaceMe",
+      "title": "Welcome to Reese\u2019s TV",
+      "description": "A quick channel intro.",
+      "tags": [
+        "channel",
+        "intro"
+      ],
+      "published": "2025-09-01",
+      "source": "drive"
+    },
+    {
+      "id": "1xyzEXAMPLEidReplaceMe",
+      "title": "Episode 1 \u2014 The Beginning",
+      "description": "Our first full episode!",
+      "tags": [
+        "episode",
+        "season1"
+      ],
+      "published": "2025-09-02",
+      "source": "drive"
+    }
+  ]
+}

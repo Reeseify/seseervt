@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Reese’s TV</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#273278" />
+  <link rel="icon" href="img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="img/favicon.png" />
+  <link rel="preload" href="img/logo-full.png" as="image" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
+
+  <meta name="description" content="Reese’s TV — playful streaming site for Reese’s videos." />
+</head>
+<body data-page="home">
+  <header class="topbar">
+    <div class="brand">
+      <img src="img/favicon.png" alt="Reese's TV logo" class="brand-icon" />
+      <img src="img/logo-full.png" alt="Reese's TV" class="brand-wordmark" />
+    </div>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search videos…" autocomplete="off" />
+    </div>
+    <nav class="nav">
+      <a href="./" class="nav-link">Home</a>
+      <a href="library.html" class="nav-link">Library</a>
+      <a href="about.html" class="nav-link">About</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Welcome to Reese’s TV</h1>
+        <p>Your playful home for videos, series, and shorts.</p>
+        <a class="btn primary" href="#latest">Watch Latest</a>
+      </div>
+    </section>
+
+    <section id="latest" class="section">
+      <h2>Latest</h2>
+      <div id="latest-grid" class="video-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="section">
+      <h2>All Videos</h2>
+      <div id="all-grid" class="video-grid"></div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Reese’s TV — Built with ❤️ and GitHub Pages.</p>
+  </footer>
+
+</body>
+</html>
