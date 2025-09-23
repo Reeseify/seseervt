@@ -1,4 +1,7 @@
 const state = { data:null, page:document.body.dataset.page, q:"" };
+// Convenience selectors
+const $  = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
 // === Disney+-style helpers ===
 function tile(show){
