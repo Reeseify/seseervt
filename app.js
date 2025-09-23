@@ -4,6 +4,65 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 const state = { data:null, page:document.body.dataset.page, q:"" };
 
+// === Disney+-style helpers ===
+function tile(show){
+  const logo = show.logo ? `<img src="${show.logo}" alt="${show.name} logo" />`
+                         : `<div class="thumb" style="display:grid;place-items:center;font-weight:800">${show.name}</div>`;
+  return `<a class="tile" href="show.html?show=${encodeURIComponent(show.id)}" title="${show.name}">
+    ${logo}
+    <div class="shim"></div>
+    <div class="label"><span class="name">${show.name}</span><span class="badge">${show.seasons||0}s</span></div>
+  </a>`;
+}
+
+function mountHero(shows){
+  if(!shows.length) return;
+  const hero = document.getElementById('hero');
+  const pick = shows[0];
+  if(!hero) return;
+  hero.style.backgroundImage = pick.logo ? `url(${pick.logo})` : "";
+  const logoEl = document.getElementById('hero-logo');
+  if(logoEl && pick.logo){ logoEl.src = pick.logo; logoEl.style.background = '#0f1327'; }
+  document.getElementById('hero-title').textContent = pick.name;
+  document.getElementById('hero-meta').textContent = (pick.studio||'') + (pick.seasons?` • ${pick.seasons} season${pick.seasons==1?'':'s'}`:'');
+  const play = document.getElementById('hero-play');
+  const det = document.getElementById('hero-details');
+  if(play) play.href = `show.html?show=${encodeURIComponent(pick.id)}`;
+  if(det) det.href = `show.html?show=${encodeURIComponent(pick.id)}`;
+}
+
+function scrollRow(id, dir){
+  const el = document.querySelector(id);
+  if(!el) return;
+  el.scrollBy({left: dir * (el.clientWidth*0.9), behavior:'smooth'});
+}
+
+function paintChips(data){
+  const wrap = document.getElementById('studio-chips');
+  if(!wrap) return;
+  const studios = (data.studios||[]).map(s=>s.name).filter(Boolean);
+  const unique = [...new Set(studios)];
+  const chips = ['All', ...unique].map(name=>`<button class="chip" data-studio="${name}">${name}</button>`).join('');
+  wrap.innerHTML = chips;
+  wrap.addEventListener('click', (e)=>{
+    if(e.target.matches('.chip')){
+      const sel = e.target.getAttribute('data-studio');
+      $$('.chip').forEach(c=>c.removeAttribute('aria-current'));
+      e.target.setAttribute('aria-current','true');
+      filterByStudio(sel==='All'?null:sel);
+    }
+  });
+}
+
+function filterByStudio(studio){
+  const shows = state.data.shows || deriveShows(state.data);
+  const list = studio? shows.filter(s=> s.studio===studio) : shows;
+  const allRow = document.getElementById('row-all');
+  if(allRow) allRow.innerHTML = list.map(tile).join('');
+}
+
+
+
 async function loadLocalVideosJson(){
   try{
     const res = await fetch('videos.json', {cache:'no-store'});
@@ -99,13 +158,16 @@ function item(v){
 
 function renderHome(data){
   const shows = data.shows || deriveShows(data);
-  // Latest shows: sort by latestPublished desc
-  const latest = [...shows].sort((a,b)=> (b.latestPublished||0)-(a.latestPublished||0)).slice(0,8);
-  const all = shows;
-  const latestGrid = document.getElementById('latest-grid');
-  const allGrid = document.getElementById('all-grid');
-  if(latestGrid) latestGrid.innerHTML = latest.map(showCard).join('');
-  if(allGrid) allGrid.innerHTML = all.map(showCard).join('');
+  const latest = [...shows].sort((a,b)=> (b.latestPublished||0)-(a.latestPublished||0)).slice(0,12);
+  mountHero(latest.length?latest:shows);
+  const latestRow = document.getElementById('row-latest');
+  const allRow = document.getElementById('row-all');
+  if(latestRow) latestRow.innerHTML = latest.map(tile).join('');
+  if(allRow) allRow.innerHTML = shows.map(tile).join('');
+  paintChips(data);
+  // wire row controls
+  $$('.controls .prev').forEach(b=> b.onclick = ()=> scrollRow(b.dataset.target, -1));
+  $$('.controls .next').forEach(b=> b.onclick = ()=> scrollRow(b.dataset.target, +1));
 }
 
 function renderWatch(data){
@@ -162,7 +224,7 @@ function wireCommon(){
         const q = state.q.toLowerCase();
         const shows = state.data.shows || deriveShows(state.data);
         const list = shows.filter(s => s.name.toLowerCase().includes(q) || s.studio.toLowerCase().includes(q));
-        const grid = document.getElementById('all-grid');
+        const grid = document.getElementById('row-all');
         if(grid) grid.innerHTML = list.map(showCard).join('');
       };
   wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
@@ -189,7 +251,7 @@ function renderChannelsBar(data){
 
 function filterHomeByStudio(studio){
   const videos = state.data.videos;
-  const grid = document.getElementById('all-grid');
+  const grid = document.getElementById('row-all');
   if(!grid) return;
   if(!studio || studio==='__ALL__'){
     grid.innerHTML = videos.map(card).join('');
@@ -242,7 +304,7 @@ window.addEventListener('scroll', ()=>{
 function renderShowsSearchBar(){
   const search = document.getElementById('search');
   if(!search || !state.data?.shows) return;
-  const grid = document.getElementById('all-grid');
+  const grid = document.getElementById('row-all');
   grid.innerHTML = state.data.videos.map(card).join(''); // initial keep
   search.placeholder = "Search shows…";
   const makeTile = (s)=> `<a class="logo-card" href="show.html?show=${encodeURIComponent(s.id)}" title="${s.name}">
