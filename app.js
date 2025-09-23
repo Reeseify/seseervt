@@ -319,6 +319,29 @@ function filterHomeByStudio(studio){
   grid.innerHTML = list.map(card).join('');
 }
 
+
+
+// ---- Build a 'shows' collection from hierarchy (studios->shows), with poster/hero
+function deriveShows(data){
+  const shows = [];
+  (data.studios||[]).forEach(st=>{
+    (st.shows||[]).forEach(sh=>{
+      // Poster: show logo if available; else try first video's thumb
+      const poster = sh.logo || (sh.videos && sh.videos[0] ? thumbFor(sh.videos[0]) : null) || 'img/logo-full.png';
+      shows.push({
+        id: sh.id,
+        name: sh.name,
+        studio: st.name,
+        logo: sh.logo || null,
+        poster,
+        count: (sh.videos||[]).length
+      });
+    });
+  });
+  shows.sort((a,b)=> b.count - a.count || a.name.localeCompare(b.name));
+  data.shows = shows;
+  return shows;
+}
 // ---- Home enhancements
 function enhanceHome(data){
   renderTopPicks(data);
@@ -331,3 +354,107 @@ window.addEventListener('scroll', ()=>{
   if(!tb) return;
   if(window.scrollY>10) tb.classList.add('scrolled'); else tb.classList.remove('scrolled');
 });
+
+
+function renderShowsSearchBar(){
+  const search = document.getElementById('search');
+  if(!search || !state.data?.shows) return;
+  const grid = document.getElementById('all-grid');
+  grid.innerHTML = state.data.videos.map(card).join(''); // initial keep
+  search.placeholder = "Search shows…";
+  const makeTile = (s)=> `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(s.id)}" title="${s.name}">
+    ${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}
+  </a>`;
+  const injectShows = (list)=>{
+    // Render shows above all-grid for clarity
+    let holder = document.getElementById('shows-search-results');
+    if(!holder){
+      const sec = document.createElement('section');
+      sec.className = 'section';
+      sec.innerHTML = `<h2><span class="dot"></span> Shows</h2><div id="shows-search-results" class="logo-grid"></div>`;
+      document.querySelector('.container').insertBefore(sec, document.getElementById('latest'));
+      holder = sec.querySelector('#shows-search-results');
+    }
+    holder.innerHTML = list.map(makeTile).join('');
+  };
+  // initial render
+  injectShows(state.data.shows);
+  search.addEventListener('input', ()=>{
+    const q = search.value.toLowerCase();
+    const list = state.data.shows.filter(s => s.name.toLowerCase().includes(q) || s.studio.toLowerCase().includes(q));
+    injectShows(list);
+  });
+}
+
+// Library page: show the shows
+(function(){
+  if(document.body.dataset.page!=='library') return;
+  const grid = document.getElementById('library-grid');
+  const filters = document.getElementById('filters');
+
+  function renderLibraryShows(){
+    const shows = state.data.shows || deriveShows(state.data);
+    const studios = [...new Set(shows.map(s=>s.studio))];
+    filters.innerHTML = '';
+    studios.forEach(st=>{
+      const b = document.createElement('button');
+      b.className='filter'; b.textContent=st; b.setAttribute('aria-pressed','false');
+      b.onclick=()=>{ b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')==='true'?'false':'true'); apply(); };
+      filters.appendChild(b);
+    });
+    const tile = (s)=> `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(s.id)}">${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}</a>`;
+    function apply(){
+      const active = Array.from(filters.querySelectorAll('.filter[aria-pressed="true"]')).map(x=>x.textContent);
+      const q = (document.getElementById('search')?.value||'').toLowerCase();
+      const list = shows.filter(s => (!active.length || active.includes(s.studio)) && (!q || s.name.toLowerCase().includes(q) || s.studio.toLowerCase().includes(q)));
+      grid.innerHTML = list.map(tile).join('');
+    }
+    apply();
+    document.getElementById('search')?.addEventListener('input', apply);
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    setTimeout(()=>{
+      if(state.data) renderLibraryShows();
+    }, 0);
+  });
+})();
+
+// Rewire Top Picks to use shows when available
+(function(){
+  const orig = renderTopPicks;
+  renderTopPicks = (data)=>{
+    deriveShows(data);
+    const featuredShows = data.shows.filter(s => (s.name||'').toLowerCase().includes('[featured]')).slice(0,5); // optional convention
+    const wrap = document.getElementById('top-picks');
+    if(featuredShows.length && wrap){
+      wrap.innerHTML = featuredShows.map((s,i)=>`
+        <div class="slide ${i===0?'active':''}">
+          <img class="media" src="${s.poster}" alt="">
+          <div class="content">
+            <h3>${s.name}</h3>
+            <p class="muted">${s.studio}</p>
+            <a class="btn primary" href="browse.html?folder=${encodeURIComponent(s.id)}">Open Show</a>
+          </div>
+        </div>
+      `).join('') + `
+      <div class="controls">
+        <button class="ctrl" id="prevSlide" aria-label="Previous">‹</button>
+        <button class="ctrl" id="nextSlide" aria-label="Next">›</button>
+      </div>
+      <div class="dots">${featuredShows.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join('')}</div>`;
+      // same slider wiring
+      let idx = 0;
+      const slides = Array.from(wrap.querySelectorAll('.slide'));
+      const dots = Array.from(wrap.querySelectorAll('.dots span'));
+      const show = (n)=>{ idx=(n+slides.length)%slides.length; slides.forEach((s,i)=>s.classList.toggle('active', i===idx)); dots.forEach((d,i)=>d.classList.toggle('active', i===idx)); };
+      wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
+      wrap.querySelector('#nextSlide').onclick = ()=> show(idx+1);
+      let timer = setInterval(()=> show(idx+1), 6000);
+      wrap.addEventListener('mouseenter', ()=> clearInterval(timer));
+      wrap.addEventListener('mouseleave', ()=> timer = setInterval(()=> show(idx+1), 6000));
+    }else{
+      orig(data);
+    }
+  };
+})();
