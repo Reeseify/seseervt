@@ -187,29 +187,11 @@ function renderWatch(data){
 }
 
 function renderLibrary(data){
-  const tags = [...new Set(data.videos.flatMap(v=>v.tags||[]))];
-  const filters = $('#filters');
-  tags.forEach(t=>{
-    const el = document.createElement('button');
-    el.className='filter'; el.textContent=t; el.setAttribute('aria-pressed','false');
-    el.onclick=()=>{
-      const on = el.getAttribute('aria-pressed')==='true' ? 'false':'true';
-      el.setAttribute('aria-pressed', on);
-      applyFilters();
-    };
-    filters.appendChild(el);
-  });
-  const grid = $('#library-grid');
-  function applyFilters(){
-    const active = $$('.filter[aria-pressed="true"]').map(b=>b.textContent);
-    const q = ($('#search')?.value||'').toLowerCase().trim();
-    const list = data.videos.filter(v=>{
-      const qok = !q || v.title.toLowerCase().includes(q) || (v.description||'').toLowerCase().includes(q);
-      const tok = active.length===0 || (v.tags||[]).some(t=>active.includes(t));
-      return qok && tok;
-    });
-    grid.innerHTML = list.map(card).join('');
-  }
+  const shows = data.shows || deriveShows(data);
+  const grid = document.getElementById('row-all') || document.getElementById('library-grid') || document.getElementById('videos');
+  if(!grid) return;
+  grid.innerHTML = shows.map(tile).join('');
+}
   applyFilters();
   $('#search')?.addEventListener('input', applyFilters);
 }
