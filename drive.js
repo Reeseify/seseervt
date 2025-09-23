@@ -7,6 +7,8 @@ const Drive = (()=>{
   const isVideo  = mt => mt && mt.startsWith("video/");
   const logoName = n => /^(logo)(\.(png|jpg|jpeg|webp))$/i.test(n||"");
   const isSeason = n => /^season\s*\d+$/i.test((n||"").trim());
+  const mediaUrl = (id, key) =>
+  `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${key}`;
 
   async function listChildren(apiKey, folderId, pageToken=""){
     const url = new URL(API);
