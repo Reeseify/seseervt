@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Show — Reese’s TV</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#273278" />
+  <link rel="icon" href="img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="img/favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="drive.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body data-page="show">
+  <header class="topbar">
+    <div class="brand">
+      <img src="img/favicon.png" alt="Reese's TV logo" class="brand-icon" />
+      <img src="img/logo-full.png" alt="Reese's TV" class="brand-wordmark" />
+    </div>
+    <div class="search-wrap"></div>
+    <nav class="nav">
+      <a href="./" class="nav-link">Home</a>
+      <a href="browse.html" class="nav-link">Browse</a>
+      <a href="library.html" class="nav-link">Library</a>
+      <a href="about.html" class="nav-link">About</a>
+    </nav>
+  </header>
+  <main class="container show-page">
+    <section class="show-hero" id="show-hero">
+      <div class="hero-overlay">
+        <img id="show-logo" class="show-logo" src="" alt="" />
+        <div class="show-meta">
+          <div id="show-badges" class="badges"></div>
+          <p id="show-desc" class="muted"></p>
+          <div class="show-actions">
+            <a id="btn-continue" class="btn primary" href="#">Continue</a>
+            <a id="btn-restart" class="btn" href="#">Restart</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="episodes">Episodes</button>
+      <button class="tab" data-tab="suggested">Suggested</button>
+      <button class="tab" data-tab="details">Details</button>
+    </nav>
+
+    <section id="tab-episodes" class="tab-panel active">
+      <div class="season-select">
+        <button id="seasonBtn" class="btn">Season</button>
+        <div id="seasonMenu" class="menu" hidden></div>
+      </div>
+      <div id="episodes-grid" class="video-grid"></div>
+    </section>
+
+    <section id="tab-suggested" class="tab-panel">
+      <div id="suggested-row" class="row"></div>
+    </section>
+
+    <section id="tab-details" class="tab-panel">
+      <div class="details-grid">
+        <div>
+          <h3 id="details-title">Show Title</h3>
+          <p id="details-plot" class="muted"></p>
+        </div>
+        <div class="cols">
+          <div><strong>Studio:</strong> <span id="details-studio"></span></div>
+          <div><strong>Seasons:</strong> <span id="details-seasons"></span></div>
+          <div><strong>Episodes:</strong> <span id="details-episodes"></span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Reese’s TV.</p>
+  </footer>
+</body>
+</html>

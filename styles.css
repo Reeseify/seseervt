@@ -169,3 +169,29 @@ h1{font-size:clamp(28px,4vw,40px)}
   .card:hover, .item:hover, .logo-card:hover, .btn:hover {transform:none}
   .hero{animation:none}
 }
+
+
+/* --- Show page --- */
+.show-hero{position:relative; border-radius:22px; overflow:hidden; min-height:360px; background:#0b1140; box-shadow: var(--shadow)}
+.show-hero::before{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.65)); z-index:1}
+.show-hero .hero-overlay{position:absolute; inset:0; z-index:2; display:flex; gap:24px; align-items:flex-end; padding:24px}
+.show-logo{max-height:80px; object-fit:contain; filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));}
+.show-meta{max-width:min(760px, 100%);}
+.badges{display:flex; gap:8px; margin:8px 0 12px}
+.badges .badge{background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.18)}
+.show-actions{display:flex; gap:10px}
+
+.tabs{display:flex; gap:16px; margin:16px 0 8px; border-bottom:1px solid rgba(255,255,255,.12)}
+.tab{background:none; border:none; color:var(--ink); padding:12px 2px; cursor:pointer; opacity:.8}
+.tab.active{opacity:1; border-bottom:2px solid #fff}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.season-select{position:relative; margin:8px 0 12px}
+.menu{position:absolute; top:100%; left:0; background:rgba(20,24,40,.98); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; max-height:260px; overflow:auto; min-width:180px; box-shadow:var(--shadow)}
+.menu button{background:none; border:none; color:var(--ink); text-align:left; padding:8px; border-radius:8px; cursor:pointer}
+.menu button:hover{background:rgba(255,255,255,.08)}
+
+.details-grid{display:grid; grid-template-columns:2fr 1fr; gap:20px}
+.details-grid .cols{display:grid; gap:10px}
+@media(max-width:900px){ .details-grid{grid-template-columns:1fr} }

@@ -362,7 +362,7 @@ function renderShowsSearchBar(){
   const grid = document.getElementById('all-grid');
   grid.innerHTML = state.data.videos.map(card).join(''); // initial keep
   search.placeholder = "Search shows…";
-  const makeTile = (s)=> `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(s.id)}" title="${s.name}">
+  const makeTile = (s)=> `<a class="logo-card" href="show.html?show=${encodeURIComponent(s.id)}" title="${s.name}">
     ${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}
   </a>`;
   const injectShows = (list)=>{
@@ -402,7 +402,7 @@ function renderShowsSearchBar(){
       b.onclick=()=>{ b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')==='true'?'false':'true'); apply(); };
       filters.appendChild(b);
     });
-    const tile = (s)=> `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(s.id)}">${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}</a>`;
+    const tile = (s)=> `<a class="logo-card" href="show.html?show=${encodeURIComponent(s.id)}">${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}</a>`;
     function apply(){
       const active = Array.from(filters.querySelectorAll('.filter[aria-pressed="true"]')).map(x=>x.textContent);
       const q = (document.getElementById('search')?.value||'').toLowerCase();
@@ -434,7 +434,7 @@ function renderShowsSearchBar(){
           <div class="content">
             <h3>${s.name}</h3>
             <p class="muted">${s.studio}</p>
-            <a class="btn primary" href="browse.html?folder=${encodeURIComponent(s.id)}">Open Show</a>
+            <a class="btn primary" href="show.html?show=${encodeURIComponent(s.id)}">Open Show</a>
           </div>
         </div>
       `).join('') + `
@@ -457,4 +457,82 @@ function renderShowsSearchBar(){
       orig(data);
     }
   };
+})();
+
+
+// ===== Show page renderer =====
+async function renderShowPage(data){
+  const params = new URLSearchParams(location.search);
+  const showId = params.get('show');
+  if(!showId) return;
+  let studio=null, show=null;
+  for(const s of (data.studios||[])){
+    const found = (s.shows||[]).find(x=>x.id===showId);
+    if(found){ show=found; studio=s; break; }
+  }
+  if(!show) return;
+
+  // Hero
+  const hero = document.getElementById('show-hero');
+  const poster = show.logo || (show.videos[0] ? thumbFor(show.videos[0]) : 'img/logo-full.png');
+  hero.style.background = `center/cover no-repeat url('${poster}')`;
+  const logoEl = document.getElementById('show-logo');
+  if(show.logo){ logoEl.src = show.logo; logoEl.alt = `${show.name} logo`; } else { logoEl.remove(); }
+  document.getElementById('show-desc').textContent = `${studio.name} • ${show.videos.length} episode${show.videos.length===1?'':'s'}`;
+
+  // Continue/Restart
+  const first = show.videos[0];
+  if(first){
+    document.getElementById('btn-continue').href = `watch.html?vid=${encodeURIComponent(first.id)}`;
+    document.getElementById('btn-restart').href = `watch.html?vid=${encodeURIComponent(first.id)}`;
+  }
+
+  // Tabs
+  const tabs = Array.from(document.querySelectorAll('.tab'));
+  const panels = Array.from(document.querySelectorAll('.tab-panel'));
+  tabs.forEach(t => t.addEventListener('click', ()=>{
+    tabs.forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    panels.forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+  }));
+
+  // Episodes tab with season dropdown
+  const seasonBtn = document.getElementById('seasonBtn');
+  const seasonMenu = document.getElementById('seasonMenu');
+  const grid = document.getElementById('episodes-grid');
+  const seasons = show.seasons.length ? show.seasons : [{name:'All', videos:show.videos}];
+  function renderEpisodes(list){ grid.innerHTML = list.map(card).join(''); }
+  function pickSeason(s){
+    seasonBtn.textContent = s.name || 'Season';
+    renderEpisodes(s.videos || show.videos);
+    seasonMenu.hidden = true;
+  }
+  seasonMenu.innerHTML = seasons.map((s,i)=>`<button data-i="${i}">${s.name}</button>`).join('');
+  seasonMenu.addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    pickSeason(seasons[parseInt(b.dataset.i,10)]);
+  });
+  seasonBtn.onclick = ()=> { seasonMenu.hidden = !seasonMenu.hidden; };
+  pickSeason(seasons[0]);
+
+  // Suggested tab: other shows from same studio
+  const row = document.getElementById('suggested-row');
+  const others = (studio.shows||[]).filter(x=>x.id!==show.id).slice(0,10);
+  row.innerHTML = others.map(s=>`<a class="logo-card" href="show.html?show=${encodeURIComponent(s.id)}">${s.logo?`<img src="${s.logo}" alt="${s.name} logo">`:`<div class="fallback">${s.name}</div>`}</a>`).join('');
+
+  // Details tab
+  document.getElementById('details-title').textContent = show.name;
+  document.getElementById('details-plot').textContent = `Episodes curated from ${studio.name}.`;
+  document.getElementById('details-studio').textContent = studio.name;
+  document.getElementById('details-seasons').textContent = show.seasons.length || '-';
+  document.getElementById('details-episodes').textContent = show.videos.length;
+}
+
+(function(){
+  if(document.body.dataset.page==='show'){
+    (async()=>{
+      const data = await loadData();
+      renderShowPage(data);
+    })();
+  }
 })();
