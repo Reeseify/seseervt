@@ -252,7 +252,82 @@ async function renderBrowsePage(data){
   // Wait a microtask for previous init to populate
   setTimeout(async ()=>{
     const data = await loadData();
-    if(document.body.dataset.page==='home') renderStudiosHome(data);
+    if(document.body.dataset.page==='home'){ renderStudiosHome(data); enhanceHome(data);}
     if(document.body.dataset.page==='browse') renderBrowsePage(data);
   }, 0);
 })();
+
+
+// ---- Top Picks banner (uses tag 'featured' or first 3 latest)
+function renderTopPicks(data){
+  const picks = data.videos.filter(v => (v.tags||[]).map(t=>t.toLowerCase()).includes('featured')).slice(0,5);
+  const list = picks.length ? picks : data.videos.slice(0,5);
+  const wrap = document.getElementById('top-picks');
+  if(!wrap) return;
+  wrap.innerHTML = `
+    ${list.map((v,i)=>`
+      <div class="slide ${i===0?'active':''}">
+        <img class="media" src="${thumbFor(v)}" alt="">
+        <div class="content">
+          <h3>${v.title}</h3>
+          <p class="muted">${(v.description||'').slice(0,120)}${(v.description||'').length>120?'…':''}</p>
+          <a class="btn primary" href="watch.html?vid=${encodeURIComponent(v.id)}">Watch</a>
+        </div>
+      </div>
+    `).join('')}
+    <div class="controls">
+      <button class="ctrl" id="prevSlide" aria-label="Previous">‹</button>
+      <button class="ctrl" id="nextSlide" aria-label="Next">›</button>
+    </div>
+    <div class="dots">${list.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join('')}</div>
+  `;
+  let idx = 0;
+  const slides = Array.from(wrap.querySelectorAll('.slide'));
+  const dots = Array.from(wrap.querySelectorAll('.dots span'));
+  const show = (n)=>{ idx=(n+slides.length)%slides.length; slides.forEach((s,i)=>s.classList.toggle('active', i===idx)); dots.forEach((d,i)=>d.classList.toggle('active', i===idx)); };
+  wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
+  wrap.querySelector('#nextSlide').onclick = ()=> show(idx+1);
+  let timer = setInterval(()=> show(idx+1), 6000);
+  wrap.addEventListener('mouseenter', ()=> clearInterval(timer));
+  wrap.addEventListener('mouseleave', ()=> timer = setInterval(()=> show(idx+1), 6000));
+}
+
+// ---- Channel buttons + rows
+function renderChannelsBar(data){
+  const bar = document.getElementById('channel-buttons');
+  if(!bar || !data.studios) return;
+  const btn = (st)=> `<button class="channel-btn" data-studio="${st.name}" aria-pressed="false">${st.logo?`<img src="${st.logo}" alt="">`:''}<span>${st.name}</span></button>`;
+  bar.innerHTML = `<button class="channel-btn" data-studio="__ALL__" aria-pressed="true">All</button>` + data.studios.map(btn).join('');
+  bar.addEventListener('click', ev=>{
+    const b = ev.target.closest('.channel-btn'); if(!b) return;
+    bar.querySelectorAll('.channel-btn').forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');
+    const studio = b.dataset.studio;
+    filterHomeByStudio(studio);
+  });
+}
+
+function filterHomeByStudio(studio){
+  const videos = state.data.videos;
+  const grid = document.getElementById('all-grid');
+  if(!grid) return;
+  if(!studio || studio==='__ALL__'){
+    grid.innerHTML = videos.map(card).join('');
+    return;
+  }
+  const list = videos.filter(v => (v.tags||[]).includes(studio));
+  grid.innerHTML = list.map(card).join('');
+}
+
+// ---- Home enhancements
+function enhanceHome(data){
+  renderTopPicks(data);
+  renderChannelsBar(data);
+}
+
+// sticky topbar effect
+window.addEventListener('scroll', ()=>{
+  const tb = document.querySelector('.topbar');
+  if(!tb) return;
+  if(window.scrollY>10) tb.classList.add('scrolled'); else tb.classList.remove('scrolled');
+});

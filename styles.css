@@ -111,3 +111,61 @@ h1{font-size:clamp(28px,4vw,40px)}
 .carousel{margin:18px 0}
 .carousel h3{margin:0 0 8px}
 .carousel .row .card{min-width:240px}
+
+/* --- Modern playful refresh --- */
+:root{
+  --glass: rgba(255,255,255,.08);
+  --border: rgba(255,255,255,.12);
+  --hover: rgba(255,255,255,.14);
+}
+.topbar{transition:background .3s ease, border-color .3s ease}
+.topbar.scrolled{background: color-mix(in oklab, var(--bg) 70%, #000 20%); border-bottom-color: rgba(255,255,255,.18);}
+
+.hero{
+  position:relative; overflow:hidden; isolation:isolate;
+  background: radial-gradient(1000px 400px at 0% -20%, color-mix(in oklab, var(--brand) 70%, var(--brand-2) 30%), transparent 60%),
+              linear-gradient(180deg, color-mix(in oklab, var(--brand) 40%, var(--bg) 60%), color-mix(in oklab, var(--bg) 90%, black 10%));
+  animation: floaty 14s ease-in-out infinite alternate;
+}
+@keyframes floaty{
+  0%{transform: translateY(0)}
+  100%{transform: translateY(-6px)}
+}
+
+.card{transition: transform .18s ease, box-shadow .18s ease, background .18s ease}
+.card:hover{transform: translateY(-4px); background:var(--hover); box-shadow:0 12px 28px rgba(0,0,0,.35)}
+.item{transition: transform .18s ease, background .18s ease}
+.item:hover{transform: translateY(-2px); background:var(--hover)}
+
+.btn{transition: transform .16s ease, filter .16s ease}
+.btn:hover{transform: translateY(-1px)}
+.btn:active{transform: translateY(1px)}
+
+.logo-card{transition: transform .2s ease, background .2s ease}
+.logo-card:hover{transform: translateY(-4px); background:var(--hover)}
+
+.section h2, .carousel h3{display:flex; align-items:center; gap:8px}
+.section h2 .dot, .carousel h3 .dot{width:8px; height:8px; border-radius:50%; background:linear-gradient(90deg,var(--brand),var(--brand-2)); box-shadow:0 0 14px var(--brand-2)}
+
+.channels{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0}
+.channel-btn{display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:var(--glass); border:1px solid var(--border); cursor:pointer}
+.channel-btn[aria-pressed="true"]{background:linear-gradient(90deg,var(--brand),var(--brand-2)); border:none}
+.channel-btn img{width:22px; height:22px; object-fit:contain}
+
+.banner{margin:24px 0; border-radius:24px; overflow:hidden; position:relative; box-shadow: var(--shadow); background:#0b1140}
+.banner .slide{position:relative; display:none}
+.banner .slide.active{display:block; animation: fadeIn .5s ease}
+@keyframes fadeIn{from{opacity:.4} to{opacity:1}}
+.banner .media{aspect-ratio:16/7; width:100%; object-fit:cover; filter: saturate(1.05) contrast(1.05)}
+.banner .content{position:absolute; inset:auto 0 0 0; padding:20px 24px; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.55) 70%);}
+.banner h3{margin:0 0 6px; font-size:clamp(20px,3vw,28px)}
+.banner .controls{position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; padding:0 12px}
+.banner .ctrl{width:42px; height:42px; border-radius:50%; border:1px solid var(--border); background:var(--glass); display:grid; place-items:center; cursor:pointer}
+.banner .dots{position:absolute; right:16px; bottom:12px; display:flex; gap:6px}
+.banner .dots span{width:8px; height:8px; border-radius:999px; background:rgba(255,255,255,.4)}
+.banner .dots span.active{background:#fff}
+
+@media (prefers-reduced-motion: reduce){
+  .card:hover, .item:hover, .logo-card:hover, .btn:hover {transform:none}
+  .hero{animation:none}
+}
