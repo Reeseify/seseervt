@@ -98,9 +98,14 @@ function item(v){
 }
 
 function renderHome(data){
-  const latest = data.videos.slice(0,8);
-  $('#latest-grid').innerHTML = latest.map(card).join('');
-  $('#all-grid').innerHTML = data.videos.map(card).join('');
+  const shows = data.shows || deriveShows(data);
+  // Latest shows: sort by latestPublished desc
+  const latest = [...shows].sort((a,b)=> (b.latestPublished||0)-(a.latestPublished||0)).slice(0,8);
+  const all = shows;
+  const latestGrid = document.getElementById('latest-grid');
+  const allGrid = document.getElementById('all-grid');
+  if(latestGrid) latestGrid.innerHTML = latest.map(showCard).join('');
+  if(allGrid) allGrid.innerHTML = all.map(showCard).join('');
 }
 
 function renderWatch(data){
@@ -155,136 +160,11 @@ function wireCommon(){
       state.q = search.value;
       if(state.page==='home'){
         const q = state.q.toLowerCase();
-        const all = state.data.videos.filter(v => v.title.toLowerCase().includes(q) || (v.description||'').toLowerCase().includes(q));
-        $('#all-grid').innerHTML = all.map(card).join('');
-      }
-    });
-  }
-}
-
-(async function init(){
-  wireCommon();
-  const data = await loadData();
-  if(state.page==='home') renderHome(data);
-  if(state.page==='watch') renderWatch(data);
-  if(state.page==='library') renderLibrary(data);
-})();
-
-
-// --- Extra rendering for Studios and hierarchical browse ---
-function studioTile(st){
-  const logo = st.logo || 'img/logo-full.png';
-  return `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(st.id)}" title="${st.name}">
-    <img src="${logo}" alt="${st.name} logo" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fallback',textContent:'${st.name}'}))">
-  </a>`;
-}
-function showTile(sh){
-  const logo = sh.logo || 'img/logo-full.png';
-  return `<a class="logo-card" href="browse.html?folder=${encodeURIComponent(sh.id)}" title="${sh.name}">
-    <img src="${logo}" alt="${sh.name} logo" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fallback',textContent:'${sh.name}'}))">
-  </a>`;
-}
-
-function renderStudiosHome(data){
-  if(!data.studios) return;
-  const sec = document.createElement('section');
-  sec.className='section carousel';
-  sec.innerHTML = `<h3>Studios</h3><div class="row" id="studios-row"></div>`;
-  document.querySelector('.container').insertBefore(sec, document.querySelector('#latest'));
-  const row = document.getElementById('studios-row');
-  row.innerHTML = data.studios.map(studioTile).join('');
-}
-
-async function renderBrowsePage(data){
-  const params = new URLSearchParams(location.search);
-  const folder = params.get('folder'); // if null, show studios
-  const crumbs = document.getElementById('crumbs');
-  const foldersWrap = document.getElementById('folders');
-  const videosWrap = document.getElementById('videos');
-  const makeCrumb = (label, href) => `<a ${href?`href="${href}"`:''}>${label}</a>`;
-
-  if(!folder){
-    crumbs.innerHTML = makeCrumb('Studios');
-    foldersWrap.innerHTML = data.studios.map(studioTile).join('');
-    videosWrap.innerHTML = '';
-    return;
-  }
-  // Try to match studio or show
-  const studio = (data.studios||[]).find(s=> s.id===folder);
-  if(studio){
-    crumbs.innerHTML = makeCrumb('Studios','browse.html') + ' / ' + makeCrumb(studio.name);
-    foldersWrap.innerHTML = studio.shows.map(showTile).join('');
-    videosWrap.innerHTML = studio.videos.map(card).join('');
-    return;
-  }
-  // maybe it's a show id; find in all studios
-  let show=null, parentStudio=null;
-  for(const s of (data.studios||[])){
-    const found = s.shows.find(x=>x.id===folder);
-    if(found){ show=found; parentStudio=s; break; }
-  }
-  if(show){
-    crumbs.innerHTML = makeCrumb('Studios','browse.html') + ' / ' + makeCrumb(parentStudio.name, `browse.html?folder=${parentStudio.id}`) + ' / ' + makeCrumb(show.name);
-    foldersWrap.innerHTML = '';
-    videosWrap.innerHTML = show.videos.map(card).join('');
-    return;
-  }
-  // Fallback: list folder children generically
-  const cfg = await (await fetch('config.json')).json().catch(()=>null);
-  if(cfg){
-    try{
-      const fdata = await Drive.readFolder(cfg.apiKey, folder);
-      const fakeShows = (fdata.folders||[]).map(f => ({id:f.id, name:f.name, logo:null}));
-      crumbs.innerHTML = makeCrumb('Browse');
-      foldersWrap.innerHTML = fakeShows.map(showTile).join('');
-      videosWrap.innerHTML = (fdata.videos||[]).map(v=>card({id:v.id,title:v.name, published:(v.modifiedTime||'').slice(0,10), thumb:v.thumbnailLink, source:'drive'})).join('');
-    }catch(e){ console.warn(e); }
-  }
-}
-
-// Hook into existing init
-(async function extraInit(){
-  if(!state?.data) return;
-})();
-
-// Patch main init to insert Studios on home and support browse page
-(async function init2(){
-  // Wait a microtask for previous init to populate
-  setTimeout(async ()=>{
-    const data = await loadData();
-    if(document.body.dataset.page==='home'){ renderStudiosHome(data); enhanceHome(data);}
-    if(document.body.dataset.page==='browse') renderBrowsePage(data);
-  }, 0);
-})();
-
-
-// ---- Top Picks banner (uses tag 'featured' or first 3 latest)
-function renderTopPicks(data){
-  const picks = data.videos.filter(v => (v.tags||[]).map(t=>t.toLowerCase()).includes('featured')).slice(0,5);
-  const list = picks.length ? picks : data.videos.slice(0,5);
-  const wrap = document.getElementById('top-picks');
-  if(!wrap) return;
-  wrap.innerHTML = `
-    ${list.map((v,i)=>`
-      <div class="slide ${i===0?'active':''}">
-        <img class="media" src="${thumbFor(v)}" alt="">
-        <div class="content">
-          <h3>${v.title}</h3>
-          <p class="muted">${(v.description||'').slice(0,120)}${(v.description||'').length>120?'…':''}</p>
-          <a class="btn primary" href="watch.html?vid=${encodeURIComponent(v.id)}">Watch</a>
-        </div>
-      </div>
-    `).join('')}
-    <div class="controls">
-      <button class="ctrl" id="prevSlide" aria-label="Previous">‹</button>
-      <button class="ctrl" id="nextSlide" aria-label="Next">›</button>
-    </div>
-    <div class="dots">${list.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join('')}</div>
-  `;
-  let idx = 0;
-  const slides = Array.from(wrap.querySelectorAll('.slide'));
-  const dots = Array.from(wrap.querySelectorAll('.dots span'));
-  const show = (n)=>{ idx=(n+slides.length)%slides.length; slides.forEach((s,i)=>s.classList.toggle('active', i===idx)); dots.forEach((d,i)=>d.classList.toggle('active', i===idx)); };
+        const shows = state.data.shows || deriveShows(state.data);
+        const list = shows.filter(s => s.name.toLowerCase().includes(q) || s.studio.toLowerCase().includes(q));
+        const grid = document.getElementById('all-grid');
+        if(grid) grid.innerHTML = list.map(showCard).join('');
+      };
   wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
   wrap.querySelector('#nextSlide').onclick = ()=> show(idx+1);
   let timer = setInterval(()=> show(idx+1), 6000);
@@ -328,13 +208,16 @@ function deriveShows(data){
     (st.shows||[]).forEach(sh=>{
       // Poster: show logo if available; else try first video's thumb
       const poster = sh.logo || (sh.videos && sh.videos[0] ? thumbFor(sh.videos[0]) : null) || 'img/logo-full.png';
+      const latest = (sh.videos||[]).reduce((m,v)=> Math.max(m, Date.parse(v.published||'')||0), 0);
       shows.push({
         id: sh.id,
         name: sh.name,
         studio: st.name,
         logo: sh.logo || null,
         poster,
-        count: (sh.videos||[]).length
+        count: (sh.videos||[]).length,
+        seasons: (sh.seasons||[]).length,
+        latestPublished: latest
       });
     });
   });
@@ -536,3 +419,17 @@ async function renderShowPage(data){
     })();
   }
 })();
+
+
+function showCard(s){
+  // Fallback text tile if logo missing
+  const img = s.logo ? `<img class="thumb" src="${s.logo}" alt="${s.name} logo" style="object-fit:contain;background:#0b1140">`
+                     : `<div class="thumb" style="display:grid;place-items:center;font-weight:700">${s.name}</div>`;
+  return `<a class="card" href="show.html?show=${encodeURIComponent(s.id)}">
+    ${img}
+    <div class="card-body">
+      <h3>${s.name}</h3>
+      <div class="badge">${s.seasons||0} season${(s.seasons||0)==1?'':'s'}</div>
+    </div>
+  </a>`;
+}
