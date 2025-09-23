@@ -58,17 +58,33 @@ function filterByStudio(studio){
 }
 
 function renderHome(data){
-  const shows = data.shows || deriveShows(data);
-  const latest = [...shows].sort((a,b)=> (b.latestPublished||0)-(a.latestPublished||0)).slice(0,12);
-  mountHero(latest.length?latest:shows);
+  // Always derive shows from studios
+  const shows = deriveShows(data);
+  if (!shows.length) {
+    console.warn("No shows found in data:", data);
+    return;
+  }
+
+  const latest = [...shows]
+    .sort((a,b)=> (b.latestPublished||0) - (a.latestPublished||0))
+    .slice(0, 12);
+
+  mountHero(latest.length ? latest : shows);
+
   const latestRow = document.getElementById('row-latest');
-  const allRow = document.getElementById('row-all');
-  if(latestRow) latestRow.innerHTML = latest.map(tile).join('');
-  if(allRow) allRow.innerHTML = shows.map(tile).join('');
+  const allRow   = document.getElementById('row-all');
+
+  if (latestRow) latestRow.innerHTML = latest.map(tile).join('');
+  if (allRow) allRow.innerHTML = shows.map(tile).join('');
+
   paintChips(data);
-  $$('.controls .prev').forEach(b=> b.onclick = ()=> scrollRow(b.dataset.target, -1));
-  $$('.controls .next').forEach(b=> b.onclick = ()=> scrollRow(b.dataset.target, +1));
+
+  $$('.controls .prev')
+    .forEach(b => b.onclick = () => scrollRow(b.dataset.target, -1));
+  $$('.controls .next')
+    .forEach(b => b.onclick = () => scrollRow(b.dataset.target, +1));
 }
+
 
 function deriveShows(data){
   const out=[];
