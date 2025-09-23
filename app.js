@@ -118,4 +118,44 @@ function wireCommon(){
   }
 }
 
-document.addEventListener('DOMContentLoaded', wireCommon);
+// ---- Automatic boot on page load ----
+async function boot() {
+  try {
+    // 1) Load config.json (or window.APP_CONFIG if you prefer embedding)
+    let cfg;
+    try {
+      cfg = await fetch('config.json', { cache: 'no-store' }).then(r => r.json());
+    } catch (e) {
+      if (window.APP_CONFIG) cfg = window.APP_CONFIG;
+      else throw e;
+    }
+
+    // 2) Crawl Google Drive
+    const data = await Drive.loadFromConfig(cfg);
+
+    // 3) Save globally for other pages / search
+    state.data = data;
+
+    // 4) Render the current page
+    switch (state.page) {
+      case 'home':
+        renderHome(data);
+        break;
+      case 'library':
+      case 'browse':
+        renderLibrary?.(data);
+        break;
+      case 'show':
+        renderShow?.(data);
+        break;
+      case 'watch':
+        renderWatch?.(data);
+        break;
+    }
+  } catch (err) {
+    console.error('Boot failed:', err);
+  }
+}
+
+// Defer until DOM is ready (works with <script defer>)
+document.addEventListener('DOMContentLoaded', boot);
