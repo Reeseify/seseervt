@@ -76,3 +76,24 @@ img{display:block; max-width:100%}
 .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .chip{padding:.45rem .8rem; border-radius:999px; background:rgba(255,255,255,.08); font-weight:700; white-space:nowrap; cursor:pointer}
 .chip[aria-current="true"]{background:linear-gradient(90deg, var(--brand), var(--brand-2)); color:#051018}
+
+
+/* ==== Spacing tweaks (Browse + Library) ==== */
+.container .h1{ margin: 1.25rem 0 .5rem; }
+
+/* Studio chips row spacing */
+#studio-chips{ margin: .25rem 0 1rem; gap: .5rem; }
+
+/* Carousels: more breathing room and edge padding */
+.carousel{ gap: 18px; padding: 10px 8px 14px; }
+.carousel::before,
+.carousel::after{ content:""; display:block; flex:0 0 6px; }
+
+/* Browse grid spacing */
+body[data-page="browse"] #browse-grid{ gap: 22px; margin-top: 8px; }
+
+/* Library grid spacing */
+body[data-page="library"] #library-grid{ gap: 22px; margin-top: 8px; }
+
+/* Slightly larger labels to match spacing */
+.tile .label{ left:14px; right:14px; bottom:12px; }
