@@ -1,15 +1,60 @@
-/* Reese's TV static app */
+
+/* Reese's TV static app (Drive auto-scan enabled) */
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 const state = { data:null, page:document.body.dataset.page, q:"" };
 
+async function loadLocalVideosJson(){
+  try{
+    const res = await fetch('videos.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('no local manifest');
+    return await res.json();
+  }catch(e){ return null; }
+}
+
+async function loadConfig(){
+  try{
+    const res = await fetch('config.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('no config');
+    return await res.json();
+  }catch(e){ return null; }
+}
+
 async function loadData(){
   if(state.data) return state.data;
-  const res = await fetch('videos.json', {cache:'no-store'});
-  const data = await res.json();
-  data.videos.sort((a,b)=> (b.published||'').localeCompare(a.published||''));
-  state.data = data;
-  return data;
+
+  // Prefer Drive auto-scan if config exists
+  const cfg = await loadConfig();
+  if(cfg && typeof Drive !== "undefined"){
+    try{
+      // Basic cache (5 minutes) to avoid API quota spikes
+      const now = Date.now();
+      const cached = localStorage.getItem('rtv_cache');
+      if(cached){
+        const obj = JSON.parse(cached);
+        if(now - (obj.ts||0) < 5*60*1000){
+          state.data = obj.data;
+          return state.data;
+        }
+      }
+      const fromDrive = await Drive.loadFromConfig(cfg);
+      if(fromDrive){
+        state.data = fromDrive;
+        localStorage.setItem('rtv_cache', JSON.stringify({ts:now, data:state.data}));
+        return state.data;
+      }
+    }catch(e){
+      console.warn("Drive scan failed, falling back to videos.json", e);
+    }
+  }
+
+  // Fallback to static manifest
+  const local = await loadLocalVideosJson();
+  if(local){ state.data = local; return state.data; }
+
+  // Final fallback: empty
+  state.data = { videos: [] };
+  return state.data;
 }
 
 function thumbFor(v){
@@ -123,5 +168,4 @@ function wireCommon(){
   if(state.page==='home') renderHome(data);
   if(state.page==='watch') renderWatch(data);
   if(state.page==='library') renderLibrary(data);
-  if(state.page==='about') {/* nothing extra */}
 })();

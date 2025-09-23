@@ -1,0 +1,6 @@
+{
+  "apiKey": "REPLACE_WITH_YOUR_PUBLIC_API_KEY",
+  "folders": [
+    "YOUR_DRIVE_FOLDER_ID"
+  ]
+}

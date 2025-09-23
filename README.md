@@ -46,3 +46,30 @@ Drive auto‑generates a thumbnail you can use via:
 ---
 
 Made for Reese’s playful brand 💙
+
+
+## Auto-scan Google Drive (no backend)
+This site can auto-list videos from public Drive folders using a **Drive API key**.
+
+### Setup
+1. In Google Cloud Console:
+   - Create a project → **Enable APIs & Services** → enable **Google Drive API**.
+   - Create **API key** (no OAuth needed). You can restrict it to HTTP referrers later.
+2. Make your Drive folder(s) **Anyone with the link** (Viewer).
+3. In the repo, create **config.json** like:
+```json
+{
+  "apiKey": "YOUR_PUBLIC_API_KEY",
+  "folders": ["YOUR_DRIVE_FOLDER_ID"]
+}
+```
+4. Deploy. The site will scan those folders (recursively) on page load and render the videos. It caches the listing in `localStorage` for 5 minutes to save quota.
+5. If `config.json` is missing or scanning fails, it falls back to `videos.json`.
+
+### Notes
+- Drive preview and thumbnail work only for items shared publicly.
+- API key is okay to expose for this read-only listing use; restrict by **HTTP referrer** to your Pages domain for safety.
+- For complex setups or private folders, consider the alternative below.
+
+## Alternative: Apps Script JSON feed (private or more control)
+If you don’t want an API key on the client, deploy a tiny **Google Apps Script** that lists a folder and returns JSON, then point the site at that endpoint instead of `config.json`. I can generate that script on request.
