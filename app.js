@@ -378,11 +378,6 @@ function renderShowsSearchBar(){
       const slides = Array.from(wrap.querySelectorAll('.slide'));
       const dots = Array.from(wrap.querySelectorAll('.dots span'));
       const show = (n)=>{ idx=(n+slides.length)%slides.length; slides.forEach((s,i)=>s.classList.toggle('active', i===idx)); dots.forEach((d,i)=>d.classList.toggle('active', i===idx)); };
-      wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
-      wrap.querySelector('#nextSlide').onclick = ()=> show(idx+1);
-      let timer = setInterval(()=> show(idx+1), 6000);
-      wrap.addEventListener('mouseenter', ()=> clearInterval(timer));
-      wrap.addEventListener('mouseleave', ()=> timer = setInterval(()=> show(idx+1), 6000));
     }else{
       orig(data);
     }
