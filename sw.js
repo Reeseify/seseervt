@@ -1,13 +1,12 @@
 
 /* Reese's TV service worker: cache images on-device (patched) */
-const VERSION = 'v1.0.1';
+const VERSION = 'v1.0.4';
 const CORE_CACHE = `core-${VERSION}`;
 const IMG_CACHE = `img-${VERSION}`;
 
 const CORE_ASSETS = [
   './',
   './index.html','./browse.html','./library.html','./show.html','./watch.html','./about.html',
-  './styles.css','./app.js','./drive.js',
   './img/favicon.png','./img/logo-full.png'
 ];
 
@@ -48,6 +47,11 @@ function isDriveJsonList(req) {
     && !/thumbnail/i.test(url.href);
 }
 
+
+function isStaticAsset(url){
+  return url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -58,7 +62,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
-  const sameOrigin = url.origin === self.location.origin;
+  const sameOrigin = url.origin === self.location.origin; if(sameOrigin && isStaticAsset(url)) return;
 
   if (isImageRequest(request)) {
     event.respondWith((async () => {
