@@ -191,9 +191,8 @@ function renderLibrary(data){
   const grid = document.getElementById('row-all') || document.getElementById('library-grid') || document.getElementById('videos');
   if(!grid) return;
   grid.innerHTML = shows.map(tile).join('');
-}
-  applyFilters();
-  $('#search')?.addEventListener('input', applyFilters);
+  apply();
+  document.getElementById('search')?.addEventListener('input', apply);
 }
 
 function wireCommon(){
@@ -209,11 +208,8 @@ function wireCommon(){
         const grid = document.getElementById('row-all');
         if(grid) grid.innerHTML = list.map(showCard).join('');
       };
-  wrap.querySelector('#prevSlide').onclick = ()=> show(idx-1);
-  wrap.querySelector('#nextSlide').onclick = ()=> show(idx+1);
-  let timer = setInterval(()=> show(idx+1), 6000);
-  wrap.addEventListener('mouseenter', ()=> clearInterval(timer));
-  wrap.addEventListener('mouseleave', ()=> timer = setInterval(()=> show(idx+1), 6000));
+    });
+  }
 }
 
 // ---- Channel buttons + rows
