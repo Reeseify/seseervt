@@ -1,7 +1,42 @@
-const Drive = (()=>{
+// Google Drive crawler with OAuth (accessToken) or API key (public-only)
+const Drive = (() => {
   const API = "https://www.googleapis.com/drive/v3/files";
   const FIELDS = "nextPageToken, files(id,name,mimeType,modifiedTime,parents,thumbnailLink)";
-  async function getFileMeta(config, id){
+
+  const isFolder = (mt) => mt === "application/vnd.google-apps.folder";
+  const isVideo  = (mt) => mt && mt.startsWith("video/");
+  const logoName = (n)  => /^(logo)(\.(png|jpg|jpeg|webp))$/i.test(n || "");
+  const isSeason = (n)  => /^season\s*\d+$/i.test((n || "").trim());
+  const mediaUrl = (id, key) => `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${key}`;
+
+  function idFromInput(s) {
+    if (!s) return s;
+    const m = String(s).match(/[-\w]{25,}/);
+    return m ? m[0] : s;
+  }
+
+  function getAuth(config) {
+    return {
+      accessToken: (config && config.accessToken) || null,
+      apiKey:      (config && config.apiKey)      || null,
+    };
+  }
+
+  async function listChildren(config, folderId, pageToken = "") {
+    const { accessToken, apiKey } = getAuth(config);
+    const url = new URL(API);
+    if (apiKey && !accessToken) url.searchParams.set("key", apiKey);
+    url.searchParams.set("q", `'${folderId}' in parents and trashed=false`);
+    url.searchParams.set("fields", FIELDS);
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const res = await fetch(url.toString(), { headers });
+    if (!res.ok) throw new Error("Drive list failed: " + res.status);
+    return await res.json();
+  }
+
+  async function getFileMeta(config, id) {
     const { accessToken, apiKey } = getAuth(config);
     const url = new URL(`https://www.googleapis.com/drive/v3/files/${id}`);
     url.searchParams.set("fields", "id,name,mimeType");
@@ -11,54 +46,20 @@ const Drive = (()=>{
     if (!res.ok) throw new Error("Drive meta failed: " + res.status);
     return await res.json();
   }
-  function idFromInput(s){
-    if(!s) return s;
-    const m = String(s).match(/[-\w]{25,}/);
-    return m ? m[0] : s;
-  }
 
-  const isFolder = mt => mt === "application/vnd.google-apps.folder";
-  const isVideo  = mt => mt && mt.startsWith("video/");
-  const logoName = n => /^(logo)(\.(png|jpg|jpeg|webp))$/i.test(n||"");
-  const isSeason = n => /^season\s*\d+$/i.test((n||"").trim());
-  const mediaUrl = (id, key) => `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${key}`;
-
-  function getAuth(config){
-    return {
-      accessToken: (config && config.accessToken) || null,
-      apiKey: (config && config.apiKey) || null
-    };
-  }
-
-  async function listChildren(config, folderId, pageToken=""){
-    const { accessToken, apiKey } = getAuth(config);
-    if (!accessToken && apiKey) {
-      console.warn("Drive: using apiKey only (private files will not be returned). For private content, pass accessToken from Google Identity Services.");
-    }
-    const { accessToken, apiKey } = getAuth(config);
-    const url = new URL(API);
-    if (apiKey && !accessToken) url.searchParams.set("key", apiKey);
-    url.searchParams.set("q", `'${folderId}' in parents and trashed=false`);
-    url.searchParams.set("fields", FIELDS);
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-    const res = await fetch(url.toString(), { headers });
-    if (!res.ok) throw new Error("Drive list failed: " + res.status);
-    return await res.json();
-  }
-
-  async function readLevel(config, folderId){
+  async function readLevel(config, folderId) {
     let pageToken = "", folders = [], files = [], logo = null;
-    do{
+    do {
       const data = await listChildren(config, folderId, pageToken);
-      for (const f of (data.files || [])){
-        if (isFolder(f.mimeType)){
+      for (const f of (data.files || [])) {
+        if (isFolder(f.mimeType)) {
           folders.push({ id: f.id, name: f.name });
-        } else if (isVideo(f.mimeType)){
+        } else if (isVideo(f.mimeType)) {
           files.push(f);
-        } else if (logoName(f.name)){
-          // Prefer thumbnail (works with OAuth). Fallback to mediaUrl when only apiKey is available.
-          logo = f.thumbnailLink || (getAuth(config).apiKey ? mediaUrl(f.id, getAuth(config).apiKey) : null);
+        } else if (logoName(f.name)) {
+          // Prefer thumbnail (works with OAuth). Fallback to media URL when only an apiKey is present.
+          const { apiKey } = getAuth(config);
+          logo = f.thumbnailLink || (apiKey ? mediaUrl(f.id, apiKey) : null);
         }
       }
       pageToken = data.nextPageToken || "";
@@ -66,31 +67,35 @@ const Drive = (()=>{
     return { folders, files, logo };
   }
 
-  function toVideoRecord(f, path=[]){
+  function toVideoRecord(f, path = []) {
     return {
-      id: f.id,
-      name: f.name,
+      id:        f.id,
+      name:      f.name,
       published: f.modifiedTime,
-      modified: f.modifiedTime,
-      source: "drive",
-      thumb: f.thumbnailLink || `https://drive.google.com/thumbnail?id=${f.id}`,
-      embed: `https://drive.google.com/file/d/${f.id}/preview`,
+      modified:  f.modifiedTime,
+      source:    "drive",
+      thumb:     f.thumbnailLink || `https://drive.google.com/thumbnail?id=${f.id}`,
+      embed:     `https://drive.google.com/file/d/${f.id}/preview`,
       path
     };
   }
 
-  async function crawlHierarchy(config, rootIds){
+  async function crawlHierarchy(config, rootIds) {
     const studios = [];
-    for (const raw of rootIds){ const studioId = idFromInput(raw);
-      const stLevel = await readLevel(config, studioId);
-      const meta = await getFileMeta(config, studioId).catch(()=>({name:""}));
-      const studio = { id: studioId, name: meta.name || "", shows: [] };
-      for (const showFolder of stLevel.folders){
+    for (const raw of rootIds) {
+      const studioId  = idFromInput(raw);
+      const stLevel   = await readLevel(config, studioId);
+      let studioName  = "";
+      try { const meta = await getFileMeta(config, studioId); studioName = meta.name || ""; } catch(e) {}
+      const studio = { id: studioId, name: studioName, shows: [], logo: stLevel.logo || null };
+
+      for (const showFolder of stLevel.folders) {
         const shLevel = await readLevel(config, showFolder.id);
         const seasons = [];
-        const seasonFolders = shLevel.folders.filter(f => isSeason(f.name));
-        if (seasonFolders.length){
-          for (const sf of seasonFolders){
+        const seasonFolders = (shLevel.folders || []).filter(f => isSeason(f.name));
+
+        if (seasonFolders.length) {
+          for (const sf of seasonFolders) {
             const sLevel = await readLevel(config, sf.id);
             const videos = (sLevel.files || []).map(v => toVideoRecord(v, [studio.name, showFolder.name, sf.name]));
             seasons.push({ id: sf.id, name: sf.name, videos });
@@ -99,24 +104,31 @@ const Drive = (()=>{
           const videos = (shLevel.files || []).map(v => toVideoRecord(v, [studio.name, showFolder.name, "Season 1"]));
           if (videos.length) seasons.push({ id: showFolder.id + ":S1", name: "Season 1", videos });
         }
+
         const show = { id: showFolder.id, name: showFolder.name, logo: shLevel.logo || null, seasons };
         if (seasons.length) studio.shows.push(show);
       }
+
       studios.push(studio);
     }
+
+    // Flatten videos array (optional parity with your previous code)
     const videos = [];
-    for (const st of studios){
-      for (const sh of (st.shows || [])){
-        for (const sn of (sh.seasons || [])){
-          for (const v of (sn.videos || [])) videos.push(v);
-        }
-      }
-    }
+    for (const st of studios)
+      for (const sh of (st.shows || []))
+        for (const sn of (sh.seasons || []))
+          for (const v of (sn.videos || []))
+            videos.push(v);
+
     return { studios, videos };
   }
 
-  async function loadFromConfig(config){
+  async function loadFromConfig(config) {
     if (!config || !Array.isArray(config.folders)) return null;
+    const { accessToken, apiKey } = getAuth(config);
+    if (!accessToken && apiKey) {
+      console.warn("Drive: using apiKey only (private Drive content will not be listed).");
+    }
     return await crawlHierarchy(config, config.folders);
   }
 
