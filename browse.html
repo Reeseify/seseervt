@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Browse — Reese’s TV</title>
-  <meta name="theme-color" content="#0b0e1a" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#273278" />
   <link rel="icon" href="img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="img/favicon.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -12,29 +12,30 @@
   <script defer src="app.js"></script>
 </head>
 <body data-page="browse">
-
   <header class="topbar">
-    <a class="brand" href="/">
-      <img class="brand-icon" src="img/favicon.png" alt="logo">
-      <img class="brand-wordmark" src="img/logo-full.png" alt="Reese's TV">
-    </a>
+    <div class="brand">
+      <img src="img/favicon.png" alt="Reese's TV logo" class="brand-icon" />
+      <img src="img/logo-full.png" alt="Reese's TV" class="brand-wordmark" />
+    </div>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search videos…" autocomplete="off" />
+    </div>
     <nav class="nav">
-      <a href="index.html" >Home</a>
-      <a href="browse.html" aria-current="page">Browse</a>
-      <a href="library.html" >Library</a>
-      <a href="about.html" >About</a>
+      <a href="./" class="nav-link">Home</a>
+      <a href="browse.html" class="nav-link">Browse</a>
+      <a href="library.html" class="nav-link">Library</a>
+      <a href="about.html" class="nav-link">About</a>
     </nav>
-    <div class="spacer"></div>
-    <div class="search"><input id="q" type="search" placeholder="Search shows…"></div>
   </header>
-
   <main class="container">
-
-  <div class="row"><h1 class="h1" style="margin:0">Browse</h1></div>
-  <div id="studio-chips" class="row" style="margin:.25rem 0 1rem"></div>
-  <div id="browse-grid" class="grid"></div>
-
+    <div id="crumbs" class="crumbs"></div>
+    <section class="section">
+      <div id="row-all" class="carousel"></div>
+      
+    </section>
   </main>
-<footer class="footer container">Made with ❤️ for Reese’s TV</footer>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Reese’s TV.</p>
+  </footer>
 </body>
 </html>
