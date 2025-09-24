@@ -81,7 +81,7 @@ window.onload = () => {
 };
 function signInAndGetToken(){ tokenClient.requestAccessToken({prompt:'consent'}); }
 </script>
-<button onclick="signInAndGetToken()" style="position:fixed;top:8px;right:8px;z-index:2000">Connect Google Drive</button>
+
 
 <script>
 window.DriveBoot = async function(accessToken){
@@ -98,5 +98,7 @@ window.DriveBoot = async function(accessToken){
   if (document.body.dataset.page === "watch") renderWatch?.(data);
 };
 </script>
+
+<footer class="footer"><small>Made with ❤️ for Reese’s TV</small></footer>
 </body>
 </html>
