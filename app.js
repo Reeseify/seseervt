@@ -16,7 +16,7 @@ function tile(show){
 
 function mountHero(shows){
   if(!shows.length) return;
-  const hero = document.getElementById('hero');
+  const hero = document.getElementById('hero') || document.getElementById('home-hero');
   const pick = shows[0];
   if(!hero) return;
   hero.style.backgroundImage = pick.logo ? `url(${pick.logo})` : "";
@@ -74,8 +74,8 @@ function renderHome(data){
 
   mountHero(latest.length ? latest : shows);
 
-  const latestRow = document.getElementById('row-latest');
-  const allRow   = document.getElementById('row-all');
+  const latestRow = document.getElementById('row-latest') || document.getElementById('row-top');
+  const allRow   = document.getElementById('row-all')    || document.getElementById('row-trend') || document.getElementById('row-because');
 
   if (latestRow) latestRow.innerHTML = latest.map(tile).join('');
   if (allRow) allRow.innerHTML = shows.map(tile).join('');
