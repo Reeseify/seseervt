@@ -106,7 +106,18 @@ async function renderWatch(){
   const { show } = found;
   let video=null; for(const sn of (show.seasons||[])){ for(const v of (sn.videos||[])){ if(v.id===vidId){ video=v; break; } } if(video) break; }
   const title = document.getElementById('watch-title'); if(title) title.textContent = video ? video.name : show.name;
-  const frame = document.getElementById('watch-frame'); if(frame){ frame.src = (video && (video.embed || video.src)) || ""; }
+  const el = document.getElementById('player') || document.getElementById('watch-frame');
+  if (el && video){
+    const url = video.embed || video.src || "";
+    if (!url) { el.removeAttribute('src'); }
+    else {
+      if (el.tagName.toLowerCase() === 'video'){
+        el.src = url; el.controls = true; el.load();
+      } else {
+        el.src = url;
+      }
+    }
+  }
 }
 
 async function boot(){

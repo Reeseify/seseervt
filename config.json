@@ -1,3 +1,4 @@
 {
-  "apiBase": "https://api.reeses.ca"
+  "apiBase": "https://api.reeses.ca",
+  "mediaBase": "https://media.reeses.ca"
 }
