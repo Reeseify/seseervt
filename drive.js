@@ -1,6 +1,21 @@
 const Drive = (()=>{
   const API = "https://www.googleapis.com/drive/v3/files";
   const FIELDS = "nextPageToken, files(id,name,mimeType,modifiedTime,parents,thumbnailLink)";
+  async function getFileMeta(config, id){
+    const { accessToken, apiKey } = getAuth(config);
+    const url = new URL(`https://www.googleapis.com/drive/v3/files/${id}`);
+    url.searchParams.set("fields", "id,name,mimeType");
+    if (apiKey && !accessToken) url.searchParams.set("key", apiKey);
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const res = await fetch(url.toString(), { headers });
+    if (!res.ok) throw new Error("Drive meta failed: " + res.status);
+    return await res.json();
+  }
+  function idFromInput(s){
+    if(!s) return s;
+    const m = String(s).match(/[-\w]{25,}/);
+    return m ? m[0] : s;
+  }
 
   const isFolder = mt => mt === "application/vnd.google-apps.folder";
   const isVideo  = mt => mt && mt.startsWith("video/");
@@ -16,6 +31,10 @@ const Drive = (()=>{
   }
 
   async function listChildren(config, folderId, pageToken=""){
+    const { accessToken, apiKey } = getAuth(config);
+    if (!accessToken && apiKey) {
+      console.warn("Drive: using apiKey only (private files will not be returned). For private content, pass accessToken from Google Identity Services.");
+    }
     const { accessToken, apiKey } = getAuth(config);
     const url = new URL(API);
     if (apiKey && !accessToken) url.searchParams.set("key", apiKey);
@@ -62,9 +81,10 @@ const Drive = (()=>{
 
   async function crawlHierarchy(config, rootIds){
     const studios = [];
-    for (const studioId of rootIds){
+    for (const raw of rootIds){ const studioId = idFromInput(raw);
       const stLevel = await readLevel(config, studioId);
-      const studio = { id: studioId, name: stLevel.name || "", shows: [] };
+      const meta = await getFileMeta(config, studioId).catch(()=>({name:""}));
+      const studio = { id: studioId, name: meta.name || "", shows: [] };
       for (const showFolder of stLevel.folders){
         const shLevel = await readLevel(config, showFolder.id);
         const seasons = [];

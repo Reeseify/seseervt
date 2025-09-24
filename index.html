@@ -53,5 +53,21 @@ window.onload = () => {
 function signInAndGetToken(){ tokenClient.requestAccessToken({prompt:'consent'}); }
 </script>
 <button onclick="signInAndGetToken()" style="position:fixed;top:8px;right:8px;z-index:2000">Connect Google Drive</button>
+
+<script>
+window.DriveBoot = async function(accessToken){
+  const cfg = await fetch("config.json").then(r=>r.json()).catch(()=>({}));
+  const folders = cfg.folders || [];
+  const config = accessToken ? { accessToken, folders } : cfg;
+  const data = await Drive.loadFromConfig(config);
+  window.state = window.state || {};
+  state.data = data;
+  if (document.body.dataset.page === "home") renderHome?.(data);
+  if (document.body.dataset.page === "browse") renderBrowse?.(data);
+  if (document.body.dataset.page === "library") renderLibrary?.(data);
+  if (document.body.dataset.page === "show") renderShow?.(data);
+  if (document.body.dataset.page === "watch") renderWatch?.(data);
+};
+</script>
 </body>
 </html>
