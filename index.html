@@ -12,6 +12,7 @@
   <script defer src="drive.js"></script>
   <script defer src="app.js"></script>
   <meta name="description" content="Reese’s TV — a sleek, Disney+-style streaming library that auto-indexes your Google Drive shows." />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body data-page="home">
   <header class="topbar">
@@ -28,5 +29,29 @@
     <section class="row">Because you watched</section>
     <div id="row-because" class="scroller"></div>
   </main>
+
+<script>
+let tokenClient;
+window.onload = () => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: '465014084113-csjk55ee9mmq7kbb8a33b713q79gbt4q.apps.googleusercontent.com',
+    scope: 'https://www.googleapis.com/auth/drive.readonly',
+    callback: (resp) => {
+      if(resp.error){ console.error(resp); return; }
+      const config = {
+        accessToken: resp.access_token,
+        folders: ["1uaF2R_oJePLn2BeVbOkKc1y9-NW5MYAH"]
+      };
+      Drive.loadFromConfig(config).then(data => {
+        window.state = window.state||{};
+        state.data = data;
+        renderHome?.(data);
+      });
+    }
+  });
+};
+function signInAndGetToken(){ tokenClient.requestAccessToken({prompt:'consent'}); }
+</script>
+<button onclick="signInAndGetToken()" style="position:fixed;top:8px;right:8px;z-index:2000">Connect Google Drive</button>
 </body>
 </html>
