@@ -1,184 +1,259 @@
+const state = { data:null, page:document.body.dataset.page, q:"" };
+// Convenience selectors
+const $  = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
-const state = { page: document.body.dataset.page, studios: [], shows: [], show: null, search: "" };
-
-const $ = (s,el=document)=>el.querySelector(s);
-const $$ = (s,el=document)=>Array.from(el.querySelectorAll(s));
-
-function showTile(show){
-  const art = show.logo ? `<img src="${show.logo}" alt="${show.name} logo">`
-                        : `<div class="thumb" style="display:grid;place-items:center;font-weight:800">${show.name}</div>`;
+// === Disney+-style helpers ===
+function tile(show){
+  const logo = show.logo ? `<img src="${show.logo}" alt="${show.name} logo" />`
+                         : `<div class="thumb" style="display:grid;place-items:center;font-weight:800">${show.name}</div>`;
   return `<a class="tile" href="show.html?show=${encodeURIComponent(show.id)}" title="${show.name}">
-    ${art}
+    ${logo}
     <div class="shim"></div>
-    <div class="label"><span class="name">${show.name}</span><span class="badge">${show.seasonCount||0}s</span></div>
+    <div class="label"><span class="name">${show.name}</span><span class="badge">${show.seasons||0}s</span></div>
   </a>`;
 }
 
-function card(ep){
-  return `<a class="card" href="watch.html?ep=${encodeURIComponent(ep.id)}&show=${encodeURIComponent(state.show?.id||"")}">
-    <img class="thumb" src="${ep.thumb}" alt="">
-    <div class="card-body">
-      <div>${ep.name}</div>
-      <div class="muted">${new Date(ep.modified||Date.now()).toLocaleDateString()}</div>
-    </div>
-  </a>`;
+function mountHero(shows){
+  if(!shows.length) return;
+  const hero = document.getElementById('hero');
+  const pick = shows[0];
+  if(!hero) return;
+  hero.style.backgroundImage = pick.logo ? `url(${pick.logo})` : "";
+  const logoEl = document.getElementById('hero-logo');
+  if(logoEl && pick.logo){ logoEl.src = pick.logo; logoEl.style.background = '#0f1327'; }
+  document.getElementById('hero-title').textContent = pick.name;
+  document.getElementById('hero-meta').textContent = (pick.studio||'') + (pick.seasons?` • ${pick.seasons} season${pick.seasons==1?'':'s'}`:'');
+  const play = document.getElementById('hero-play');
+  const det = document.getElementById('hero-details');
+  if(play) play.href = `show.html?show=${encodeURIComponent(pick.id)}`;
+  if(det) det.href = `show.html?show=${encodeURIComponent(pick.id)}`;
 }
 
-function allShows(){
-  return state.studios.flatMap(s=>s.shows||[]);
+function scrollRow(id, dir){
+  const el = document.querySelector(id);
+  if(!el) return;
+  el.scrollBy({left: dir * (el.clientWidth*0.9), behavior:'smooth'});
 }
 
-function parseQuery(){
-  const q = new URL(location.href).searchParams;
-  return Object.fromEntries(q.entries());
+function paintChips(data){
+  const wrap = document.getElementById('studio-chips');
+  if(!wrap) return;
+  const studios = (data.studios||[]).map(s=>s.name).filter(Boolean);
+  const unique = [...new Set(studios)];
+  const chips = ['All', ...unique].map(name=>`<button class="chip" data-studio="${name}">${name}</button>`).join('');
+  wrap.innerHTML = chips;
+  wrap.addEventListener('click', (e)=>{
+    if(e.target.matches('.chip')){
+      const sel = e.target.getAttribute('data-studio');
+      $$('.chip').forEach(c=>c.removeAttribute('aria-current'));
+      e.target.setAttribute('aria-current','true');
+      filterByStudio(sel==='All'?null:sel);
+    }
+  });
 }
 
-async function boot(){
-  try{
-    const config = await (await fetch("config.json")).json();
-    const studios = await Drive.loadFromConfig(config);
-    state.studios = studios;
-    state.shows = allShows();
+function filterByStudio(studio){
+  const shows = state.data.shows || deriveShows(state.data);
+  const list = studio? shows.filter(s=> s.studio===studio) : shows;
+  const allRow = document.getElementById('row-all');
+  if(allRow) allRow.innerHTML = list.map(tile).join('');
+}
 
-    // search bind
-    const searchBox = $("#q");
-    if(searchBox){
-      searchBox.addEventListener("input", e=>{
-        state.search = e.target.value.toLowerCase().trim();
-        if(state.page === "browse") renderBrowse();
-        if(state.page === "library") renderLibrary();
-      });
+function renderHome(data){
+  // Always derive shows from studios
+  const shows = deriveShows(data);
+  if (!shows.length) {
+    console.warn("No shows found in data:", data);
+    return;
+  }
+
+  const latest = [...shows]
+    .sort((a,b)=> (b.latestPublished||0) - (a.latestPublished||0))
+    .slice(0, 12);
+
+  mountHero(latest.length ? latest : shows);
+
+  const latestRow = document.getElementById('row-latest');
+  const allRow   = document.getElementById('row-all');
+
+  if (latestRow) latestRow.innerHTML = latest.map(tile).join('');
+  if (allRow) allRow.innerHTML = shows.map(tile).join('');
+
+  paintChips(data);
+
+  $$('.controls .prev')
+    .forEach(b => b.onclick = () => scrollRow(b.dataset.target, -1));
+  $$('.controls .next')
+    .forEach(b => b.onclick = () => scrollRow(b.dataset.target, +1));
+}
+
+
+function deriveShows(data){
+  const out=[];
+  (data.studios||[]).forEach(st=>{
+    (st.shows||[]).forEach(sh=>{
+      const latest = (sh.seasons||[]).flatMap(s=>s.videos||[]).reduce((m,v)=>Math.max(m, Date.parse(v.published||'')||0),0);
+      out.push({ id:sh.id, name:sh.name, studio:st.name||"", logo:sh.logo||null, seasons:(sh.seasons||[]).length, latestPublished:latest });
+    });
+  });
+  return out;
+}
+
+function wireCommon(){
+  const y = document.getElementById('year');
+  if (y) y.textContent = new Date().getFullYear();
+  const search = document.querySelector('#search');
+  if (search){
+    search.addEventListener('input', ()=>{
+      state.q = search.value || '';
+      if (state.page==='home' && state.data){
+        const q = state.q.toLowerCase();
+        const shows = state.data.shows || deriveShows(state.data);
+        const list = shows.filter(s =>
+          s.name.toLowerCase().includes(q) ||
+          (s.studio||'').toLowerCase().includes(q)
+        );
+        const grid = document.getElementById('row-all');
+        if (grid) grid.innerHTML = list.map(tile).join('');
+      }
+    });
+  }
+}
+
+// ---- Automatic boot on page load ----
+async function boot() {
+  try {
+    // 1) Load config.json (or window.APP_CONFIG if you prefer embedding)
+    let cfg;
+    try {
+      cfg = await fetch('config.json', { cache: 'no-store' }).then(r => r.json());
+    } catch (e) {
+      if (window.APP_CONFIG) cfg = window.APP_CONFIG;
+      else throw e;
     }
 
-    switch(state.page){
-      case "home": renderHome(); break;
-      case "browse": renderBrowse(); break;
-      case "library": renderLibrary(); break;
-      case "show": await renderShow(); break;
-      case "watch": await renderWatch(); break;
+    // 2) Crawl Google Drive
+    const data = await Drive.loadFromConfig(cfg);
+
+    // 3) Save globally for other pages / search
+    state.data = data;
+
+    // 4) Render the current page
+    switch (state.page) {
+      case 'home':
+        renderHome(data);
+        break;
+      case 'library':
+      case 'browse':
+        renderLibrary?.(data);
+        break;
+      case 'show':
+        renderShow?.(data);
+        break;
+      case 'watch':
+        renderWatch?.(data);
+        break;
     }
-  } catch (e){
-    console.error(e);
+  } catch (err) {
+    console.error('Boot failed:', err);
   }
 }
 
-function renderHome(){
-  // Top picks: first 10 shows
-  $("#row-top").innerHTML = state.shows.slice(0,10).map(showTile).join("");
-  // Studios row
-  $("#studios").innerHTML = state.studios.map(s=>{
-    const count = (s.shows||[]).length;
-    return `<span class="chip" data-studio="${s.id}" title="${count} show(s)">${s.name}</span>`;
-  }).join("");
-  // Latest shows (by latest episode date)
-  const ranked = [...state.shows].sort((a,b)=>{
-    const ad = new Date((a.seasons?.[0]?.episodes?.[0]?.modified)||0).getTime();
-    const bd = new Date((b.seasons?.[0]?.episodes?.[0]?.modified)||0).getTime();
-    return bd-ad;
-  });
-  $("#row-latest").innerHTML = ranked.slice(0,12).map(showTile).join("");
+// Defer until DOM is ready (works with <script defer>)
+document.addEventListener('DOMContentLoaded', boot);
 
-  // Click a studio chip -> browse filtered
-  $("#studios").addEventListener("click", (e)=>{
-    const chip = e.target.closest(".chip");
-    if(!chip) return;
-    const id = chip.dataset.studio;
-    localStorage.setItem("browseStudio", id);
-    location.href = "browse.html";
-  });
-}
-
-function renderBrowse(){
-  const grid = $("#browse-grid");
-  const chips = $("#studio-chips");
-  chips.innerHTML = state.studios.map(s=>`<button class="chip" data-id="${s.id}">${s.name}</button>`).join("");
-  const cur = localStorage.getItem("browseStudio");
-  if(cur) {
-    const btn = chips.querySelector(`[data-id="${CSS.escape(cur)}"]`);
-    if(btn) btn.setAttribute("aria-current","true");
-  }
-  function currentFilter(s){
-    if(!cur) return true;
-    return s.studioId === cur || s.parentStudioId === cur; // in case we annotate later
-  }
-  const q = state.search;
-  const shows = state.shows
-    .filter(sh => (!q || sh.name.toLowerCase().includes(q)))
-    .filter(sh => !cur || (state.studios.find(s=>s.id===cur)?.shows||[]).some(it=>it.id===sh.id));
-
-  grid.innerHTML = shows.map(showTile).join("");
-
-  chips.addEventListener("click", (e)=>{
-    const b = e.target.closest(".chip");
-    if(!b) return;
-    if(cur === b.dataset.id) localStorage.removeItem("browseStudio");
-    else localStorage.setItem("browseStudio", b.dataset.id);
-    renderBrowse();
-  });
-}
-
-function renderLibrary(){
-  const grid = $("#library-grid");
-  const q = state.search;
-  const shows = state.shows.filter(sh => !q || sh.name.toLowerCase().includes(q));
-  grid.innerHTML = shows.map(showTile).join("");
-}
 
 async function renderShow(){
   const { show: showId } = parseQuery();
   const show = state.shows.find(s=>s.id === showId) || state.shows[0];
   state.show = show;
-  // hero
-  $("#show-hero").innerHTML = `
-    <img src="${show.logo || 'img/favicon.png'}" alt="" style="width:160px;height:160px;object-fit:cover;border-radius:18px; border:1px solid rgba(255,255,255,.1)">
-    <div>
-      <h1 class="h1" style="margin:.25rem 0">${show.name}</h1>
-      <p class="sub">${show.seasonCount||0} season(s)</p>
-    </div>`;
 
-  // season chips
-  const chips = $("#season-chips");
-  chips.innerHTML = (show.seasons||[]).map((s,i)=>`<button class="chip" data-idx="${i}" ${i===0?'aria-current="true"':''}>${s.name}</button>`).join("");
+  const firstEp = show.seasons?.[0]?.episodes?.[0];
+  const firstThumb = firstEp?.thumb || show.logo || 'img/favicon.png';
+  const heroBg = show.banner || firstThumb;
+  const posterImg = show.logo || firstThumb;
 
-  function renderSeason(idx){
-    const season = show.seasons[idx] || {episodes:[]};
-    $("#episode-grid").innerHTML = season.episodes.map(card).join("");
+  // Fill hero elements
+  const hero = document.getElementById("heroBg"); if(hero) hero.style.backgroundImage = `url('${heroBg}')`;
+  const poster = document.getElementById("posterImg"); if(poster) poster.src = posterImg;
+  const title = document.getElementById("showTitle"); if(title) title.textContent = show.name;
+  const sc = document.getElementById("seasonCount"); if(sc) sc.textContent = `${show.seasonCount||0} season(s)`;
+
+  // Resume progress
+  const key = "progress:"+show.id;
+  const saved = JSON.parse(localStorage.getItem(key) || "null");
+  let cont = null;
+  if(saved?.ep){
+    for(const s of show.seasons||[]){ const i=(s.episodes||[]).findIndex(e=>e.id===saved.ep); if(i>=0){ cont={season:s,index:i}; break; } }
   }
-  renderSeason(0);
+  const first = show.seasons?.[0];
+  const continueEp = cont ? cont.season.episodes[cont.index] : first?.episodes?.[0];
+  const total = (cont?.season?.episodes?.length) || (first?.episodes?.length || 1);
+  const idx = cont ? cont.index : 0;
+  const pct = Math.max(0, Math.min(100, Math.round((idx/Math.max(1,total))*100)));
+  const fill = document.getElementById("progressFill"); if(fill) fill.style.width = pct + "%";
 
-  chips.addEventListener("click", (e)=>{
-    const b = e.target.closest(".chip");
-    if(!b) return;
-    chips.querySelectorAll(".chip").forEach(c=>c.removeAttribute("aria-current"));
-    b.setAttribute("aria-current","true");
-    renderSeason(+b.dataset.idx);
-  });
-}
+  const btnC = document.getElementById("btnContinue"); if(btnC) btnC.href = `watch.html?ep=${encodeURIComponent(continueEp?.id||"")}&show=${encodeURIComponent(show.id)}`;
+  const btnR = document.getElementById("btnRestart"); if(btnR) btnR.href = `watch.html?ep=${encodeURIComponent(first?.episodes?.[0]?.id||"")}&show=${encodeURIComponent(show.id)}`;
 
-async function renderWatch(){
-  const { ep, show: showId } = parseQuery();
-  const show = state.shows.find(s=>s.id===showId) || state.shows[0];
-  state.show = show;
-  let current = null;
-  for(const s of show.seasons||[]){
-    for(const e of s.episodes||[]){
-      if(e.id === ep){ current = e; break; }
+  // Season dropdown
+  const sel = document.getElementById("seasonSelect"); if(sel){ sel.innerHTML = "";
+    (show.seasons||[]).forEach((s,i)=>{
+      const opt = document.createElement("option");
+      opt.value = String(i); opt.textContent = s.name || `Season ${i+1}`;
+      if(i===0) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderSeason(idxs){
+    const season = show.seasons[idxs] || {episodes:[]};
+    const grid = document.getElementById("episodeGrid");
+    if(grid){
+      grid.innerHTML = (season.episodes||[]).map(ep => `
+        <a class="ep-card" href="watch.html?ep=${encodeURIComponent(ep.id)}&show=${encodeURIComponent(show.id)}">
+          <img src="${ep.thumb}" alt="">
+          <div class="body">
+            <div style="font-weight:800">${ep.name}</div>
+            <div class="muted">${new Date(ep.modified||Date.now()).toLocaleDateString()}</div>
+          </div>
+        </a>
+      `).join("");
     }
   }
-  if(!current) current = show.seasons?.[0]?.episodes?.[0];
-  $("#player").innerHTML = `<iframe src="${current.embed}" style="width:100%; aspect-ratio:16/9; border:0" allow="autoplay" allowfullscreen></iframe>`;
-  // Up next: rest of season
-  const season = (show.seasons||[]).find(sn=>(sn.episodes||[]).some(e=>e.id===current.id)) || show.seasons?.[0];
-  const upnext = (season.episodes||[]).filter(e=>e.id!==current.id).slice(0,8);
-  $("#upnext").innerHTML = upnext.map(card).join("");
-}
+  renderSeason(0);
+  if(sel) sel.addEventListener("change", e=> renderSeason(+e.target.value));
 
-document.addEventListener("DOMContentLoaded", boot);
+  // Suggested
+  const studio = state.studios.find(s=> (s.shows||[]).some(x=>x.id===show.id));
+  const pool = (studio?.shows || state.shows).filter(s=>s.id!==show.id).slice(0,8);
+  const sgrid = document.getElementById("suggestGrid");
+  if(sgrid){
+    sgrid.innerHTML = pool.map(s=> `
+      <a class="card" href="show.html?show=${encodeURIComponent(s.id)}">
+        ${ s.logo ? `<img class="thumb" src="${s.logo}">` : `<div class="thumb"></div>`}
+        <div class="card-body"><div>${s.name}</div></div>
+      </a>
+    `).join("");
+  }
 
+  // Details
+  const details = document.getElementById("detailsBox");
+  if(details) details.innerHTML = `<p><strong>${show.name}</strong> — ${show.seasonCount||0} season(s). Indexed from your Drive.</p>`;
 
-// Register service worker to cache images & core assets
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(console.error);
-  });
+  // Tabs
+  const tabs = document.querySelector(".tabs");
+  if(tabs){
+    tabs.addEventListener("click", (e)=>{
+      const btn = e.target.closest(".tab"); if(!btn) return;
+      document.querySelectorAll(".tabs .tab").forEach(b=>b.setAttribute("aria-selected","false"));
+      btn.setAttribute("aria-selected","true");
+      const tab = btn.dataset.tab;
+      ["episodes","suggested","details"].forEach(t => {
+        const el = document.getElementById("tab-"+t);
+        if(el){ if(t===tab) el.classList.remove("hidden"); else el.classList.add("hidden"); }
+      });
+    });
+  }
 }
