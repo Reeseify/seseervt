@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="x-version" content="v4"><title>Show — Reese’s TV</title>
+  <title>Show — Reese’s TV</title>
   <meta name="theme-color" content="#0b0e1a" />
   <link rel="icon" href="img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="img/favicon.png" />
@@ -12,29 +12,57 @@
   <script defer src="app.js"></script>
 </head>
 <body data-page="show">
-
   <header class="topbar">
     <a class="brand" href="/">
       <img class="brand-icon" src="img/favicon.png" alt="logo">
       <img class="brand-wordmark" src="img/logo-full.png" alt="Reese's TV">
     </a>
     <nav class="nav">
-      <a href="index.html" >Home</a>
-      <a href="browse.html" >Browse</a>
-      <a href="library.html" >Library</a>
-      <a href="about.html" >About</a>
+      <a href="index.html">Home</a>
+      <a href="browse.html">Browse</a>
+      <a href="library.html">Library</a>
+      <a href="about.html">About</a>
     </nav>
     <div class="spacer"></div>
     <div class="search"><input id="q" type="search" placeholder="Search shows…"></div>
   </header>
 
   <main class="container">
+    <section class="show-hero">
+      <div class="bg" id="heroBg"></div>
+      <div class="scrim"></div>
+      <div class="content container" style="padding-left:0;padding-right:0">
+        <div class="poster"><img id="posterImg" alt=""></div>
+        <div class="show-meta">
+          <h1 id="showTitle">Title</h1>
+          <div class="meta-row"><span id="seasonCount"></span></div>
+          <div class="progress"><i id="progressFill"></i></div>
+          <div class="actions">
+            <a class="btn btn-primary" id="btnContinue">CONTINUE</a>
+            <a class="btn btn-ghost" id="btnRestart">RESTART</a>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <div id="show-hero" class="row" style="gap:18px"></div>
-  <div id="season-chips" class="row" style="margin:.5rem 0 1rem"></div>
-  <div id="episode-grid" class="grid"></div>
+    <div class="tabs">
+      <button class="tab" data-tab="episodes" aria-selected="true">EPISODES</button>
+      <button class="tab" data-tab="suggested">SUGGESTED</button>
+      <button class="tab" data-tab="details">DETAILS</button>
+      <div class="season-select"><select id="seasonSelect"></select></div>
+    </div>
 
+    <section id="tab-episodes" class="section">
+      <div id="episodeGrid" class="ep-grid"></div>
+    </section>
+    <section id="tab-suggested" class="section hidden">
+      <div id="suggestGrid" class="suggest-grid"></div>
+    </section>
+    <section id="tab-details" class="section hidden">
+      <div class="details" id="detailsBox"></div>
+    </section>
   </main>
-<footer class="footer container">Made with ❤️ for Reese’s TV</footer>
+
+  <footer class="footer container">Made with ❤️ for Reese’s TV</footer>
 </body>
 </html>
