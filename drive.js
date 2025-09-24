@@ -59,8 +59,7 @@ const Drive = (()=>{
           if(videos.length) seasons.push({ id: showFolder.id+":S1", name: "Season 1", videos });
         }
         const show = { id: showFolder.id, name: showFolder.name, logo: shLevel.logo || null, seasons };
-        const epCount = (seasons||[]).reduce((m,s)=>m + (s.videos||[]).length, 0);
-        if (epCount > 0) studio.shows.push(show);
+        if (seasons.length) studio.shows.push(show);
       }
       studios.push(studio);
     }
