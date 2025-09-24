@@ -1,104 +1,65 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <title>Reese’s TV</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0e1a" />
+  <title>Home — Reese's TV</title>
+  <meta name="theme-color" content="#0e0f12" />
   <link rel="icon" href="img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="img/favicon.png" />
   <link rel="preload" href="img/logo-full.png" as="image" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="reflix.css" />
   <script defer src="app.js"></script>
-  <meta name="description" content="Reese’s TV — a sleek, Disney+-style streaming library that auto-indexes your Google Drive shows." />
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="streaming-theme.css">
 </head>
-\1
-
-<!-- Unified Top Bar -->
-<div class="topbar">
-  <div class="brand">
-    <img src="/img/logo-full.png" alt="Logo" />
-  </div>
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" aria-label="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-  </div>
-</div>
-
-
-<!-- Topbar injected by ChatGPT -->
-
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-    <button class="btn">Kids</button>
-    <button class="btn">Sign In</button>
-  </div>
-</div>
-
+<body>
   
-  <main id="home-root">
-    <section id="home-hero" class="hero"><div class="content"><h1 class="title">Loading…</h1></div></section>
-    <section class="row">Top Picks</section>
-    <div id="row-top" class="scroller"></div>
-    <section class="row">Trending</section>
-    <div id="row-trend" class="scroller"></div>
-    <section class="row">Because you watched</section>
-    <div id="row-because" class="scroller"></div>
-  </main>
-
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="brand" href="index.html" aria-label="Reese's TV">
+      <img src="img/logo-full.png" alt="Reese's TV" />
+    </a>
+    <nav class="nav">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="shows.html" data-nav="shows">Shows</a>
+      <a href="movies.html" data-nav="movies">Movies</a>
+      <a href="mylist.html" data-nav="mylist">My List</a>
+    </nav>
+    <div class="flex-grow"></div>
+    <div class="search">
+      <input id="q" placeholder="Search" />
+      <a class="nav" href="signin.html" style="padding:8px 12px;border-radius:999px;background:var(--pill)">Sign In</a>
+    </div>
+  </div>
+</header>
 <script>
-let tokenClient;
-window.onload = () => {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: '465014084113-csjk55ee9mmq7kbb8a33b713q79gbt4q.apps.googleusercontent.com',
-    scope: 'https://www.googleapis.com/auth/drive.readonly',
-    callback: (resp) => {
-      if(resp.error){ console.error(resp); return; }
-      const config = {
-        accessToken: resp.access_token,
-        folders: ["1uaF2R_oJePLn2BeVbOkKc1y9-NW5MYAH"]
-      };
-      Drive.loadFromConfig(config).then(data => {
-        window.state = window.state||{};
-        state.data = data;
-        renderHome?.(data);
-      });
+  // highlight active nav
+  (function(){
+    const map = { "index.html":"home", "shows.html":"shows", "movies.html":"movies", "mylist.html":"mylist" };
+    const here = location.pathname.split('/').pop() || "index.html";
+    const k = map[here];
+    if(k){
+      const a = document.querySelector('.nav a[data-nav="'+k+'"]');
+      if(a) a.classList.add('active');
     }
-  });
-};
-function signInAndGetToken(){ tokenClient.requestAccessToken({prompt:'consent'}); }
+  })();
 </script>
 
+  <main class="container">
+    
+<section class="hero">
+  <div class="hero-card"></div>
+  <h1>Pop Picks</h1>
+  <div class="cta">
+    <button class="btn">Continue</button>
+    <button class="btn secondary">Restart</button>
+  </div>
+</section>
+<section class="row">
+  <h2>Popular Shows</h2>
+  <div id="row-popular" class="cards"></div>
+</section>
 
-<script>
-window.DriveBoot = async function(accessToken){
-  const cfg = await fetch("config.json").then(r=>r.json()).catch(()=>({}));
-  const folders = cfg.folders || [];
-  const config = accessToken ? { accessToken, folders } : cfg;
-  const data = await Drive.loadFromConfig(config);
-  window.state = window.state || {};
-  state.data = data;
-  if (document.body.dataset.page === "home") renderHome?.(data);
-  if (document.body.dataset.page === "browse") renderBrowse?.(data);
-  if (document.body.dataset.page === "library") renderLibrary?.(data);
-  if (document.body.dataset.page === "show") renderShow?.(data);
-  if (document.body.dataset.page === "watch") renderWatch?.(data);
-};
-</script>
-
-<footer class="footer"><small>Made with ❤️ for Reese’s TV</small></footer>
+  </main>
+  <footer class="footer">Made with <span aria-hidden="true">💖</span> for Reese's TV</footer>
 </body>
 </html>

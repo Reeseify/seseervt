@@ -2,88 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Show — Reese’s TV</title>
-  <meta name="theme-color" content="#0b0e1a" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Show — Reese's TV</title>
+  <meta name="theme-color" content="#0e0f12" />
   <link rel="icon" href="img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="img/favicon.png" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="preload" href="img/logo-full.png" as="image" />
+  <link rel="stylesheet" href="reflix.css" />
   <script defer src="app.js"></script>
-  <link rel="stylesheet" href="show.page.css?v=8">
-<link rel="stylesheet" href="streaming-theme.css">
 </head>
-\1
-
-<!-- Unified Top Bar -->
-<div class="topbar">
-  <div class="brand">
-    <img src="/img/logo-full.png" alt="Logo" />
-  </div>
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" aria-label="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-  </div>
-</div>
-
-
-<!-- Topbar injected by ChatGPT -->
-
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-    <button class="btn">Kids</button>
-    <button class="btn">Sign In</button>
-  </div>
-</div>
-
+<body>
   
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="brand" href="index.html" aria-label="Reese's TV">
+      <img src="img/logo-full.png" alt="Reese's TV" />
+    </a>
+    <nav class="nav">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="shows.html" data-nav="shows">Shows</a>
+      <a href="movies.html" data-nav="movies">Movies</a>
+      <a href="mylist.html" data-nav="mylist">My List</a>
+    </nav>
+    <div class="flex-grow"></div>
+    <div class="search">
+      <input id="q" placeholder="Search" />
+      <a class="nav" href="signin.html" style="padding:8px 12px;border-radius:999px;background:var(--pill)">Sign In</a>
+    </div>
+  </div>
+</header>
+<script>
+  // highlight active nav
+  (function(){
+    const map = { "index.html":"home", "shows.html":"shows", "movies.html":"movies", "mylist.html":"mylist" };
+    const here = location.pathname.split('/').pop() || "index.html";
+    const k = map[here];
+    if(k){
+      const a = document.querySelector('.nav a[data-nav="'+k+'"]');
+      if(a) a.classList.add('active');
+    }
+  })();
+</script>
 
   <main class="container">
-    <section class="show-hero">
-      <div class="bg" id="heroBg"></div>
-      <div class="scrim"></div>
-      <div class="content container" style="padding-left:0;padding-right:0">
-        <div class="poster"><img id="posterImg" alt=""></div>
-        <div class="show-meta">
-          <h1 id="showTitle">Title</h1>
-          <div class="meta-row"><span id="seasonCount"></span></div>
-          <div class="progress"><i id="progressFill"></i></div>
-          <div class="actions">
-            <a class="btn btn-primary" id="btnContinue">CONTINUE</a>
-            <a class="btn btn-ghost" id="btnRestart">RESTART</a>
-          </div>
-        </div>
+    
+<section class="hero">
+  <div style="display:flex; gap:40px; align-items:center; justify-content:center">
+    <div class="hero-card" style="width:280px; aspect-ratio:2/3"></div>
+    <div>
+      <h1 id="show-title">Title</h1>
+      <div class="cta">
+        <a class="btn" href="watch.html">Play</a>
+        <button class="btn secondary">Restart</button>
       </div>
-    </section>
-
-    <div class="tabs">
-      <button class="tab" data-tab="episodes" aria-selected="true">EPISODES</button>
-      <button class="tab" data-tab="suggested">SUGGESTED</button>
-      <button class="tab" data-tab="details">DETAILS</button>
-      <div class="season-select"><select id="seasonSelect"></select></div>
     </div>
+  </div>
+</section>
+<section class="row">
+  <h2>Episodes</h2>
+  <div id="row-episodes" class="cards"></div>
+</section>
 
-    <section id="tab-episodes" class="section">
-      <div id="episodeGrid" class="ep-grid"></div>
-    </section>
-    <section id="tab-suggested" class="section hidden">
-      <div id="suggestGrid" class="suggest-grid"></div>
-    </section>
-    <section id="tab-details" class="section hidden">
-      <div class="details" id="detailsBox"></div>
-    </section>
   </main>
-
-  <footer class="footer container">Made with ❤️ for Reese’s TV</footer>
+  <footer class="footer">Made with <span aria-hidden="true">💖</span> for Reese's TV</footer>
 </body>
 </html>

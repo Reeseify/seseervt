@@ -1,105 +1,70 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <title>Watch — Reese’s TV</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#273278" />
+  <title>Watch — Reese's TV</title>
+  <meta name="theme-color" content="#000" />
   <link rel="icon" href="img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="img/favicon.png" />
-  <link rel="preload" href="img/logo-full.png" as="image" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="reflix.css" />
   <script defer src="app.js"></script>
-
-  <meta name="description" content="Watch Reese’s TV video." />
-<link rel="stylesheet" href="streaming-theme.css">
-
-<style>
-/* player-fullscreen */
-html, body { height:100%; margin:0; }
-.player-wrap { position:relative; width:100%; height:100vh; background:black; }
-.player-wrap video { width:100%; height:100%; object-fit:contain; background:black; }
-.player-controls { position:absolute; left:0; right:0; bottom:0; display:flex; gap:8px; padding:10px; justify-content:flex-end; background:linear-gradient(180deg, transparent, rgba(0,0,0,0.6)); }
-.player-btn { background:rgba(255,255,255,0.12); border:0; padding:8px 12px; border-radius:8px; color:#fff; cursor:pointer; }
-</style>
-<script>
-// fullscreen toggle
-document.addEventListener('DOMContentLoaded', function(){
-  const v = document.querySelector('.player-wrap video');
-  const fsBtn = document.querySelector('#fsBtn');
-  if(fsBtn && v){
-    fsBtn.addEventListener('click', () => {
-      const el = v.closest('.player-wrap');
-      if (!document.fullscreenElement) {
-        (el.requestFullscreen && el.requestFullscreen()) || (el.webkitRequestFullscreen && el.webkitRequestFullscreen());
-      } else {
-        (document.exitFullscreen && document.exitFullscreen()) || (document.webkitExitFullscreen && document.webkitExitFullscreen());
-      }
-    });
-  }
-});
-</script>
 </head>
-\1
-
-<!-- Unified Top Bar -->
-<div class="topbar">
-  <div class="brand">
-    <img src="/img/logo-full.png" alt="Logo" />
-  </div>
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" aria-label="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-  </div>
-</div>
-
-
-<!-- Topbar injected by ChatGPT -->
-
-  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
-    <a href="/" class="btn">Home</a>
-    <a href="/shows" class="btn">Shows</a>
-    <a href="/movies" class="btn">Movies</a>
-    <a href="/mylist" class="btn">My List</a>
-  </nav>
-  <div class="top-actions">
-    <input placeholder="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
-    <button class="btn">Kids</button>
-    <button class="btn">Sign In</button>
-  </div>
-</div>
-
+<body>
   
-
-  <main class="watch container">
-    <div class="player-wrap">
-      <div class="aspect-16x9">
-        <iframe id="player" src="" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>
-      </div>
-      <h1 id="video-title"></h1>
-      <p id="video-desc" class="muted"></p>
-      <div id="video-tags" class="tags"></div>
-      <div class="actions">
-        <a id="download" class="btn" href="#" target="_blank" rel="noopener">Download</a>
-        <a id="open-drive" class="btn" href="#" target="_blank" rel="noopener">Open in Drive</a>
-        <a class="btn" href="./">← Back</a>
-      </div>
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="brand" href="index.html" aria-label="Reese's TV">
+      <img src="img/logo-full.png" alt="Reese's TV" />
+    </a>
+    <nav class="nav">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="shows.html" data-nav="shows">Shows</a>
+      <a href="movies.html" data-nav="movies">Movies</a>
+      <a href="mylist.html" data-nav="mylist">My List</a>
+    </nav>
+    <div class="flex-grow"></div>
+    <div class="search">
+      <input id="q" placeholder="Search" />
+      <a class="nav" href="signin.html" style="padding:8px 12px;border-radius:999px;background:var(--pill)">Sign In</a>
     </div>
-    <aside class="next">
-      <h3>Up Next</h3>
-      <div id="upnext" class="video-list"></div>
-    </aside>
-  </main>
-  <footer class="site-footer">
-    <p>© <span id="year"></span> Reese’s TV — Built with ❤️ and GitHub Pages.</p>
-  </footer>
+  </div>
+</header>
+<script>
+  // highlight active nav
+  (function(){
+    const map = { "index.html":"home", "shows.html":"shows", "movies.html":"movies", "mylist.html":"mylist" };
+    const here = location.pathname.split('/').pop() || "index.html";
+    const k = map[here];
+    if(k){
+      const a = document.querySelector('.nav a[data-nav="'+k+'"]');
+      if(a) a.classList.add('active');
+    }
+  })();
+</script>
 
-
-<footer class="footer"><small>Made with ❤️ for Reese’s TV</small></footer>
+  <div class="player-wrap">
+    <video id="player" controls playsinline>
+      <source src="" type="video/mp4" />
+    </video>
+    <div class="player-controls">
+      <button id="fsBtn" class="player-btn">Full Screen</button>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const v = document.getElementById('player');
+      // attempt to parse ?src=
+      const p = new URLSearchParams(location.search);
+      const src = p.get('src');
+      if(src) v.querySelector('source').src = src;
+      v.load();
+      document.getElementById('fsBtn').addEventListener('click', () => {
+        const wrap = document.querySelector('.player-wrap');
+        if (!document.fullscreenElement) { wrap.requestFullscreen?.(); }
+        else { document.exitFullscreen?.(); }
+      });
+    });
+  </script>
 </body>
 </html>

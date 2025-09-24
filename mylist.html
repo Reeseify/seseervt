@@ -1,23 +1,57 @@
-
-<!doctype html><html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>My List — Reese TV</title>
-<link rel="icon" href="/img/favicon.png">
-<link rel="stylesheet" href="/streaming-theme.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My List — Reese's TV</title>
+  <meta name="theme-color" content="#0e0f12" />
+  <link rel="icon" href="img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="img/favicon.png" />
+  <link rel="preload" href="img/logo-full.png" as="image" />
+  <link rel="stylesheet" href="reflix.css" />
+  <script defer src="app.js"></script>
 </head>
 <body>
-<!-- topbar is injected by earlier pass -->
-<div class="container">
-  <section class="row">
-    <h2>My List</h2>
-    <div class="card-row">
-      <div class="card"><img src="/placeholder1.jpg" alt=""><div class="meta">Sample 1</div></div>
-      <div class="card"><img src="/placeholder2.jpg" alt=""><div class="meta">Sample 2</div></div>
-      <div class="card"><img src="/placeholder3.jpg" alt=""><div class="meta">Sample 3</div></div>
-      <div class="card"><img src="/placeholder4.jpg" alt=""><div class="meta">Sample 4</div></div>
+  
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="brand" href="index.html" aria-label="Reese's TV">
+      <img src="img/logo-full.png" alt="Reese's TV" />
+    </a>
+    <nav class="nav">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="shows.html" data-nav="shows">Shows</a>
+      <a href="movies.html" data-nav="movies">Movies</a>
+      <a href="mylist.html" data-nav="mylist">My List</a>
+    </nav>
+    <div class="flex-grow"></div>
+    <div class="search">
+      <input id="q" placeholder="Search" />
+      <a class="nav" href="signin.html" style="padding:8px 12px;border-radius:999px;background:var(--pill)">Sign In</a>
     </div>
-  </section>
-</div>
-<footer class="footer"><small>Made with ❤️ for Reese’s TV</small></footer>
-</body></html>
+  </div>
+</header>
+<script>
+  // highlight active nav
+  (function(){
+    const map = { "index.html":"home", "shows.html":"shows", "movies.html":"movies", "mylist.html":"mylist" };
+    const here = location.pathname.split('/').pop() || "index.html";
+    const k = map[here];
+    if(k){
+      const a = document.querySelector('.nav a[data-nav="'+k+'"]');
+      if(a) a.classList.add('active');
+    }
+  })();
+</script>
+
+  <main class="container">
+    
+<section class="row">
+  <h2>My List</h2>
+  <div id="row-mylist" class="cards"></div>
+</section>
+
+  </main>
+  <footer class="footer">Made with <span aria-hidden="true">💖</span> for Reese's TV</footer>
+</body>
+</html>
