@@ -128,20 +128,58 @@ async function bootShowDetail() {
     if (bg) poster.style.background = `center/cover no-repeat url("${bg}")`;
   }
 
-  // episodes (flatten seasons -> videos)
+  // episodes (by season)
   const row = document.getElementById("row-episodes");
   if (row) {
-    const items = [];
-    for (const season of data.seasons || []) {
-      for (const v of season.videos || []) {
-        items.push({
-          href: `watch.html?src=${encodeURIComponent(v.src)}&title=${encodeURIComponent(data.name + " — " + v.name)}`,
-          img: v.thumb || data.logo,
-          label: v.name
-        });
-      }
-    }
+
+  // Seasons UI
+  const bar = document.getElementById("seasons-bar");
+  const sel = document.getElementById("season-select");
+
+  const urlSeason = new URLSearchParams(location.search).get("season");
+  const seasons = (data.seasons || []).map((s, i) => ({ idx: i, id: s.id, name: s.name || `Season ${i+1}`, videos: s.videos || [] }));
+
+  function renderSeasonEpisodes(si){
+    const s = seasons[si] || seasons[0];
+    if(!s) return;
+    // highlight
+    [...(bar?.children || [])].forEach((el, idx)=> el.classList.toggle('active', idx===si));
+    if(sel) sel.selectedIndex = si;
+
+    const items = s.videos.map(v => ({
+      href: `watch.html?src=${encodeURIComponent(v.src)}&title=${encodeURIComponent((data.name||'') + ' — ' + v.name)}`,
+      img: v.thumb || data.logo,
+      label: v.name
+    }));
     grid(row, items);
+    // update URL (no reload)
+    const u = new URL(location.href);
+    u.searchParams.set('season', s.name || String(si+1));
+    history.replaceState(null, '', u.toString());
+  }
+
+  if(bar){
+    bar.innerHTML = seasons.map((s, i) => `<button class="tab" data-i="${i}">${s.name || ('Season ' + (i+1))}</button>`).join('');
+    bar.addEventListener('click', (e)=>{
+      const b = e.target.closest('.tab');
+      if(!b) return;
+      renderSeasonEpisodes(parseInt(b.dataset.i,10));
+    });
+  }
+
+  if(sel){
+    sel.innerHTML = seasons.map((s, i) => `<option value="${i}">${s.name || ('Season ' + (i+1))}</option>`).join('');
+    sel.addEventListener('change', ()=> renderSeasonEpisodes(parseInt(sel.value,10)));
+  }
+
+  // pick initial season
+  let initialIndex = 0;
+  if(urlSeason){
+    const found = seasons.findIndex(s => (s.name||'').toLowerCase() === urlSeason.toLowerCase());
+    if(found >= 0) initialIndex = found;
+  }
+  renderSeasonEpisodes(initialIndex);
+
   }
 }
 
