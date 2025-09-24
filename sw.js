@@ -1,6 +1,6 @@
 
 /* Reese's TV service worker (images + core pages) */
-const VERSION = 'v1.0.7';
+const VERSION = 'v1.0.8';
 const CORE_CACHE = `core-${VERSION}`;
 const IMG_CACHE = `img-${VERSION}`;
 
