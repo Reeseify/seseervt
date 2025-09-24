@@ -1,139 +1,175 @@
-// API-driven version (no Google Drive).
-// Reads config.apiBase, calls /api/catalog, and renders pages.
 
-var state = window.state || { data: null, page: (document.body && document.body.dataset.page) || 'home', q: "" };
-window.state = state;
+const API_BASE = "https://api.reeses.ca";
 
-const $  = (sel, el=document) => el.querySelector(sel);
-const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
-
-async function getConfig(){
-  try { return await fetch("config.json").then(r=>r.json()); }
-  catch { return {}; }
+async function fetchJSON(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return await res.json();
 }
 
-function tile(show){
-  const logo = show.logo
-    ? `<img src="${show.logo}" alt="${show.name} logo" />`
-    : `<div class="thumb" style="display:grid;place-items:center;font-weight:800">${show.name}</div>`;
-  return `<a class="tile" href="show.html?show=${encodeURIComponent(show.id)}" title="${show.name}">
-    ${logo}
-    <div class="shim"></div>
-    <div class="label"><span class="name">${show.name}</span><span class="badge">${(show.seasons||[]).length || show.seasons || 0}s</span></div>
+// ===== Data loaders (matches your Worker API) =====
+async function getCatalog() {
+  // /api/catalog returns { studios: [...], videos: [...] }
+  return await fetchJSON(`${API_BASE}/api/catalog`);
+}
+
+async function getStudios() {
+  // /api/studios returns ["Pixar", "Lucasfilm", ...]
+  return await fetchJSON(`${API_BASE}/api/studios`);
+}
+
+async function getShows(studio) {
+  // /api/shows?studio=Reese_s
+  return await fetchJSON(`${API_BASE}/api/shows?studio=${encodeURIComponent(studio)}`);
+}
+
+async function getShow(id) {
+  // /api/show?id=Reese_s/The Pepperonis
+  return await fetchJSON(`${API_BASE}/api/show?id=${encodeURIComponent(id)}`);
+}
+
+// ===== UI helpers =====
+function cardTpl({ href, img, label }) {
+  const safeImg = img || "img/logo-full.png";
+  const safeLabel = label || "Untitled";
+  return `<a class="card" href="${href}">
+    <div class="thumb"><img loading="lazy" src="${safeImg}" alt=""></div>
+    <div class="label">${safeLabel}</div>
   </a>`;
 }
 
-function deriveShows(data){
-  const out=[];
-  (data.studios||[]).forEach(st=>{
-    (st.shows||[]).forEach(sh=>{
-      const all = (sh.seasons||[]).flatMap(s=>s.videos||[]);
-      const latest = all.reduce((m,v)=>Math.max(m, Date.parse(v.modified||v.published||'')||0),0);
-      out.push({ id: sh.id, name: sh.name, studio: st.name||"", logo: sh.logo||null, seasons: sh.seasons||[], latestPublished: latest });
-    });
-  });
-  return out;
+function grid(el, items) {
+  el.innerHTML = items.map(cardTpl).join("");
 }
 
-function mountHero(shows){
-  const hero = document.getElementById('hero') || document.getElementById('home-hero');
-  if (!hero || !shows.length) return;
-  const pick = shows[0];
-  hero.innerHTML = `
-    <div class="content">
-      <h1 class="title">${pick.name}</h1>
-      <div class="subtitle">${(pick.seasons||[]).length} season${(pick.seasons||[]).length===1?"":"s"} • ${pick.studio||""}</div>
-      <div class="cta">
-        <a class="primary" href="show.html?show=${encodeURIComponent(pick.id)}">Open</a>
-        <a class="secondary" href="browse.html">Browse</a>
-      </div>
-    </div>`;
-}
-
-function fillScroller(el, items){ if(el) el.innerHTML = items.map(tile).join(""); }
-function scrollRow(id, dir){ const el=document.querySelector(id); if(el) el.scrollBy({left:dir*(el.clientWidth*0.9), behavior:'smooth'}); }
-
-function renderHome(data){
-  const shows = deriveShows(data);
-  if(!shows.length){ console.warn("No shows found in data:", data); return; }
-  const latest = [...shows].sort((a,b)=>(b.latestPublished||0)-(a.latestPublished||0)).slice(0,12);
-  mountHero(latest.length?latest:shows);
-  fillScroller(document.getElementById('row-latest')||document.getElementById('row-top'), latest.length?latest:shows.slice(0,12));
-  fillScroller(document.getElementById('row-all')||document.getElementById('row-trend'), shows.slice(0,18));
-  fillScroller(document.getElementById('row-more')||document.getElementById('row-because'), shows.slice(18,36));
-}
-
-function renderBrowse(data){
-  const wrap = document.getElementById('poster-grid') || document.querySelector('.poster-grid');
-  if(!wrap) return;
-  const shows = deriveShows(data);
-  wrap.innerHTML = shows.map(tile).join("");
-}
-
-function renderLibrary(data){ renderBrowse(data); }
-
-function parseQuery(){ const o={}; (location.search||"").replace(/^\?/,"").split("&").filter(Boolean).forEach(kv=>{const[k,v=""]=kv.split("=");o[decodeURIComponent(k)]=decodeURIComponent(v)}); return o; }
-function findShowById(data, id){ for(const st of (data.studios||[])){ for(const sh of (st.shows||[])){ if(sh.id===id) return {show:sh, studio:st}; } } return null; }
-
-async function renderShow(){
-  const { show: showId } = parseQuery();
-  if(!state.data || !showId) return;
-  const found = findShowById(state.data, showId); if(!found) return;
-  const { show, studio } = found;
-  const title = document.getElementById('show-title'); if(title) title.textContent = show.name;
-  const logo = document.getElementById('show-logo'); if(logo && show.logo) logo.src = show.logo;
-  const sel = document.getElementById('seasonSelect');
-  if(sel){ sel.innerHTML=""; (show.seasons||[]).forEach((s,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=s.name||`Season ${i+1}`; if(i===0) o.selected=true; sel.appendChild(o);}); }
-  function paint(idx){ const season = show.seasons[idx]||{videos:[]}; const grid=document.getElementById('episodeGrid'); if(!grid) return;
-    grid.innerHTML = (season.videos||[]).map(ep=>`
-      <a class="ep-card" href="watch.html?show=${encodeURIComponent(show.id)}&vid=${encodeURIComponent(ep.id)}">
-        <img src="${ep.thumb || show.logo || ''}" alt="">
-        <div class="body">
-          <div style="font-weight:800">${ep.name}</div>
-          <div class="muted">${new Date(ep.modified||Date.now()).toLocaleDateString()}</div>
-        </div>
-      </a>`).join("");
+// ===== Page routers =====
+document.addEventListener("DOMContentLoaded", async () => {
+  const here = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  try {
+    if (here === "index.html") await bootHome();
+    else if (here === "shows.html") await bootShows();
+    else if (here === "movies.html") await bootMovies();
+    else if (here === "mylist.html") await bootMyList();
+    else if (here === "show.html") await bootShowDetail();
+    else if (here === "watch.html") await bootWatch();
+  } catch (err) {
+    console.error(err);
   }
-  paint(0); if(sel) sel.addEventListener('change', e=>paint(+e.target.value));
-  const sugg = document.getElementById('suggest-grid');
-  if(sugg){ const pool=(studio?.shows||[]).filter(s=>s.id!==show.id); sugg.innerHTML=pool.slice(0,12).map(s=>tile({id:s.id,name:s.name,logo:s.logo||null,seasons:s.seasons||[]})).join(""); }
-}
+});
 
-async function renderWatch(){
-  const { show: showId, vid: vidId } = parseQuery();
-  if(!state.data) return;
-  const found = findShowById(state.data, showId); if(!found) return;
-  const { show } = found;
-  let video=null; for(const sn of (show.seasons||[])){ for(const v of (sn.videos||[])){ if(v.id===vidId){ video=v; break; } } if(video) break; }
-  const title = document.getElementById('watch-title'); if(title) title.textContent = video ? video.name : show.name;
-  const el = document.getElementById('player') || document.getElementById('watch-frame');
-  if (el && video){
-    const url = video.embed || video.src || "";
-    if (!url) { el.removeAttribute('src'); }
-    else {
-      if (el.tagName.toLowerCase() === 'video'){
-        el.src = url; el.controls = true; el.load();
-      } else {
-        el.src = url;
+// ===== Booters =====
+async function bootHome() {
+  const cat = await getCatalog();
+  // Build a row of "Popular Shows": one card per show
+  const popularEl = document.getElementById("row-popular");
+  if (popularEl) {
+    const items = [];
+    for (const studio of cat.studios || []) {
+      for (const show of studio.shows || []) {
+        const img = show.logo || firstSeasonThumb(show);
+        items.push({
+          href: `show.html?id=${encodeURIComponent(show.id)}`,
+          img,
+          label: show.name
+        });
       }
     }
+    grid(popularEl, items.slice(0, 16));
   }
 }
 
-async function boot(){
-  try{
-    const cfg = await getConfig();
-    const base = (cfg.apiBase || "").replace(/\/$/,'');
-    const res  = await fetch(base + '/api/catalog');
-    const data = await res.json();
-    state.data = data;
-    switch(state.page){
-      case 'home':    renderHome(data);    break;
-      case 'browse':  renderBrowse(data);  break;
-      case 'library': renderLibrary(data); break;
-      case 'show':    renderShow();        break;
-      case 'watch':   renderWatch();       break;
+async function bootShows() {
+  const cat = await getCatalog();
+  const target = document.getElementById("row-shows");
+  if (!target) return;
+
+  const items = [];
+  for (const studio of cat.studios || []) {
+    for (const show of studio.shows || []) {
+      const img = show.logo || firstSeasonThumb(show);
+      items.push({
+        href: `show.html?id=${encodeURIComponent(show.id)}`,
+        img,
+        label: `${show.name}`
+      });
     }
-  }catch(err){ console.error('Boot failed:', err); }
+  }
+  grid(target, items);
 }
-document.addEventListener('DOMContentLoaded', boot);
+
+async function bootMovies() {
+  // If you later model movies as specific studio/show combos,
+  // you can filter here. For now, leave empty or reuse from catalog videos.
+  const target = document.getElementById("row-movies");
+  if (!target) return;
+  target.innerHTML = `<p class="muted">Movies section coming soon.</p>`;
+}
+
+async function bootMyList() {
+  const target = document.getElementById("row-mylist");
+  if (!target) return;
+  target.innerHTML = `<p class="muted">Sign in to see your saved items.</p>`;
+}
+
+async function bootShowDetail() {
+  const p = new URLSearchParams(location.search);
+  const id = p.get("id");
+  if (!id) return;
+  const data = await getShow(id);
+
+  // header
+  const titleEl = document.getElementById("show-title");
+  if (titleEl) titleEl.textContent = data.name || "Show";
+
+  // poster
+  const poster = document.querySelector(".hero .hero-card");
+  if (poster) {
+    const bg = data.logo || firstSeasonThumb(data);
+    if (bg) poster.style.background = `center/cover no-repeat url("${bg}")`;
+  }
+
+  // episodes (flatten seasons -> videos)
+  const row = document.getElementById("row-episodes");
+  if (row) {
+    const items = [];
+    for (const season of data.seasons || []) {
+      for (const v of season.videos || []) {
+        items.push({
+          href: `watch.html?src=${encodeURIComponent(v.src)}&title=${encodeURIComponent(data.name + " — " + v.name)}`,
+          img: v.thumb || data.logo,
+          label: v.name
+        });
+      }
+    }
+    grid(row, items);
+  }
+}
+
+async function bootWatch() {
+  const p = new URLSearchParams(location.search);
+  const src = p.get("src");
+  const title = p.get("title") || "Now Playing";
+
+  // Set <source> and load
+  const v = document.getElementById("player");
+  if (v) {
+    const s = v.querySelector("source");
+    if (s && src) s.src = src;
+    v.load();
+    document.title = `Watch — ${title}`;
+  }
+
+  // Fullscreen button already wired inline in the page
+}
+
+// Helpers
+function firstSeasonThumb(show) {
+  const seasons = show.seasons || [];
+  for (const s of seasons) {
+    if (s && s.videos && s.videos.length) {
+      const t = s.videos[0].thumb;
+      if (t) return t;
+    }
+  }
+  return null;
+}
