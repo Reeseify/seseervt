@@ -1,5 +1,11 @@
 
 const Drive = (()=>{
+  function getAuth(config){
+    // Prefer OAuth accessToken when provided; fallback to apiKey
+    const accessToken = (config && config.accessToken) || null;
+    const apiKey = (config && config.apiKey) || null;
+    return { accessToken, apiKey };
+  }
   const API = "https://www.googleapis.com/drive/v3/files";
   const FIELDS = "nextPageToken, files(id,name,mimeType,modifiedTime,parents,thumbnailLink)";
 
@@ -10,10 +16,21 @@ const Drive = (()=>{
   const mediaUrl = (id, key) =>
   `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${key}`;
 
-  async function listChildren(apiKey, folderId, pageToken=""){
+  async function listChildren(config, folderId, pageToken=""){
+    const { accessToken, apiKey } = getAuth(config);
     const url = new URL(API);
-    url.searchParams.set("key", apiKey);
+    if (apiKey && !accessToken) {
+      url.searchParams.set("key", apiKey);
+    }
     url.searchParams.set("q", `'${folderId}' in parents and trashed=false`);
+    url.searchParams.set("fields", FIELDS);
+    if(pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const res = await fetch(url.toString(), { headers });
+    if(!res.ok) throw new Error("Drive list failed: " + res.status);
+    return await res.json();
+  }' in parents and trashed=false`);
     url.searchParams.set("fields", FIELDS);
     if(pageToken) url.searchParams.set("pageToken", pageToken);
     const res = await fetch(url.toString());
@@ -21,17 +38,17 @@ const Drive = (()=>{
     return await res.json();
   }
 
-  async function readLevel(apiKey, folderId){
+  async function readLevel(config, folderId){
     let pageToken = "", folders = [], files = [], logo = null;
     do{
-      const data = await listChildren(apiKey, folderId, pageToken);
+      const data = await listChildren(config, folderId, pageToken);
       for(const f of (data.files||[])){
         if(isFolder(f.mimeType)){
           folders.push({ id:f.id, name:f.name });
         }else if(isVideo(f.mimeType)){
           files.push(f);
         }else if(logoName(f.name)){
-          logo = mediaUrl(f.id, apiKey);
+          logo = mediaUrl(f.id, (config && config.apiKey));
         }
       }
       pageToken = data.nextPageToken || "";
@@ -39,18 +56,18 @@ const Drive = (()=>{
     return {folders, files, logo};
   }
 
-  async function crawlHierarchy(apiKey, rootIds){
+  async function crawlHierarchy(config, rootIds){
     const studios = [];
     for(const studioId of rootIds){
-      const stLevel = await readLevel(apiKey, studioId);
+      const stLevel = await readLevel(config, studioId);
       const studio = { id: studioId, name: stLevel.name || "", shows: [] };
       for(const showFolder of stLevel.folders){
-        const shLevel = await readLevel(apiKey, showFolder.id);
+        const shLevel = await readLevel(config, showFolder.id);
         const seasons = [];
         const seasonFolders = shLevel.folders.filter(f => isSeason(f.name));
         if(seasonFolders.length){
           for(const sf of seasonFolders){
-            const sLevel = await readLevel(apiKey, sf.id);
+            const sLevel = await readLevel(config, sf.id);
             const videos = sLevel.files.map(v => toVideoRecord(v, [studio.name, showFolder.name, sf.name]));
             seasons.push({ id: sf.id, name: sf.name, videos });
           }
@@ -88,7 +105,7 @@ const Drive = (()=>{
 
   async function loadFromConfig(config){
     if(!config?.apiKey || !Array.isArray(config.folders)) return null;
-    return await crawlHierarchy(config.apiKey, config.folders);
+    return await crawlHierarchy(config, config.folders);
   }
 
   return { loadFromConfig };
