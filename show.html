@@ -10,22 +10,43 @@
   <link rel="stylesheet" href="styles.css" />
   <script defer src="app.js"></script>
   <link rel="stylesheet" href="show.page.css?v=8">
+<link rel="stylesheet" href="streaming-theme.css">
 </head>
-<body data-page="show">
-  <header class="topbar">
-    <a class="brand" href="/">
-      <img class="brand-icon" src="img/favicon.png" alt="logo">
-      <img class="brand-wordmark" src="img/logo-full.png" alt="Reese's TV">
-    </a>
-    <nav class="nav">
-      <a href="index.html">Home</a>
-      <a href="browse.html">Browse</a>
-      <a href="library.html">Library</a>
-      <a href="about.html">About</a>
-    </nav>
-    <div class="spacer"></div>
-    <div class="search"><input id="q" type="search" placeholder="Search shows…"></div>
-  </header>
+\1
+
+<!-- Unified Top Bar -->
+<div class="topbar">
+  <div class="brand">
+    <img src="/img/logo-full.png" alt="Logo" />
+  </div>
+  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
+    <a href="/" class="btn">Home</a>
+    <a href="/shows" class="btn">Shows</a>
+    <a href="/movies" class="btn">Movies</a>
+    <a href="/mylist" class="btn">My List</a>
+  </nav>
+  <div class="top-actions">
+    <input placeholder="Search" aria-label="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
+  </div>
+</div>
+
+
+<!-- Topbar injected by ChatGPT -->
+
+  <nav style="display:flex;gap:12px;margin-left:16px;align-items:center">
+    <a href="/" class="btn">Home</a>
+    <a href="/shows" class="btn">Shows</a>
+    <a href="/movies" class="btn">Movies</a>
+    <a href="/mylist" class="btn">My List</a>
+  </nav>
+  <div class="top-actions">
+    <input placeholder="Search" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--muted)">
+    <button class="btn">Kids</button>
+    <button class="btn">Sign In</button>
+  </div>
+</div>
+
+  
 
   <main class="container">
     <section class="show-hero">

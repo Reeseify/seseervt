@@ -1,12 +1,17 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <title>About — Reese’s TV</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="refresh" content="0; url=/" />
-  <title>404 — Reese’s TV</title>
-  <link rel="icon" href="img/favicon.png" />
-  <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0e1333;color:#e7edff;display:grid;place-items:center;min-height:100vh;margin:0}</style>
+  <meta name="theme-color" content="#273278" />
+  <link rel="icon" href="img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="img/favicon.png" />
+  <link rel="preload" href="img/logo-full.png" as="image" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="drive.js"></script>
+  <script defer src="app.js"></script>
+
 <link rel="stylesheet" href="streaming-theme.css">
 </head>
 \1
@@ -43,6 +48,22 @@
   </div>
 </div>
 
-  <p>Not found. Taking you home…</p>
+  
+
+  <main class="container prose">
+    <h1>About Reese’s TV</h1>
+    <p>Reese’s TV is a lightweight, static streaming site hosted on GitHub Pages. Videos are embedded from Google Drive.</p>
+    <h2>How it works</h2>
+    <ol>
+      <li>Drop your video metadata into <code>videos.json</code>.</li>
+      <li>Each entry uses the Google Drive file ID for embedding.</li>
+      <li>GitHub Pages hosts this site—no backend required.</li>
+    </ol>
+    <p>Made to match the playful Reese’s branding 💙</p>
+  </main>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Reese’s TV — Built with ❤️ and GitHub Pages.</p>
+  </footer>
+
 </body>
 </html>
