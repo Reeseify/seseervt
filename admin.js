@@ -27,13 +27,17 @@ document.addEventListener("DOMContentLoaded", () => {
       drop.style.background = "transparent";
     })
   );
-  drop?.addEventListener("drop", (e) => queueFiles(e.dataTransfer.files));
+  drop?.addEventListener("drop", (e) => handleDrop(e));
 
   els("loginBtn")?.addEventListener("click", doLogin);
   els("logoutBtn")?.addEventListener("click", () => { clearToken(); location.reload(); });
   els("loadBtn")?.addEventListener("click", loadList);
   els("refreshBtn")?.addEventListener("click", loadList);
-  els("filePick")?.addEventListener("change", (e) => queueFiles(e.target.files));
+  els("filePick")?.addEventListener("change", (e) => {
+    // Supports folder selection via webkitdirectory (webkitRelativePath present)
+    queueFileList(e.target.files);
+    e.target.value = ""; // reset picker
+  });
 
   if (getToken()) {
     showApp();
@@ -130,19 +134,86 @@ async function delObject(key) {
   loadList();
 }
 
-// --- Upload queue ---
-function queueFiles(fileList) {
-  const path = els("path").value.trim();
-  [...fileList].forEach((f) => startMultipartUpload(path, f));
+// =====================================================
+// FOLDER SUPPORT
+// =====================================================
+
+// Queue files from <input type="file" webkitdirectory multiple> (keeps relative paths)
+function queueFileList(fileList) {
+  const basePrefix = normalizePrefix(els("path").value.trim());
+  for (const file of fileList) {
+    const rel = file.webkitRelativePath || file.name; // rel can include subfolders
+    // Build final key: current path prefix + relative path from the picker
+    const key = basePrefix + rel.replace(/^(\.\/|\/)/, "");
+    startMultipartUploadWithKey(file, key);
+  }
 }
 
-// --- Multipart upload flow (via Worker) ---
-async function startMultipartUpload(prefix, file) {
-  const base = prefix && !prefix.endsWith("/") ? prefix + "/" : (prefix || "");
-  const key = base + file.name;
+// Handle drag-drop of files/folders (DataTransferItem API)
+async function handleDrop(e) {
+  const items = e.dataTransfer.items;
+  if (!items?.length) return;
+
+  const basePrefix = normalizePrefix(els("path").value.trim());
+
+  const walkEntry = async (entry, path = "") => {
+    if (entry.isFile) {
+      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+      const relPath = (path ? path + "/" : "") + file.name;
+      const key = basePrefix + relPath;
+      startMultipartUploadWithKey(file, key);
+    } else if (entry.isDirectory) {
+      await new Promise((resolve) => {
+        const reader = entry.createReader();
+        const readBatch = () => {
+          reader.readEntries(async (entries) => {
+            if (!entries.length) return resolve();
+            for (const child of entries) {
+              await walkEntry(child, (path ? path + "/" : "") + entry.name);
+            }
+            readBatch();
+          });
+        };
+        readBatch();
+      });
+    }
+  };
+
+  const entries = [];
+  for (const it of items) {
+    const entry = it.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+  }
+  for (const entry of entries) {
+    await walkEntry(entry, "");
+  }
+}
+
+// Normalize a user-provided path prefix to ensure trailing slash or empty
+function normalizePrefix(prefix) {
+  if (!prefix) return "";
+  return prefix.endsWith("/") ? prefix : prefix + "/";
+}
+
+// =====================================================
+// Upload implementation (unchanged, but now we pass an explicit key)
+// =====================================================
+
+function queueFilesSimple(fileList) {
+  const prefix = els("path").value.trim();
+  const base = normalizePrefix(prefix);
+  [...fileList].forEach((f) => startMultipartUploadWithKey(f, base + f.name));
+}
+
+// Backwards compatible helper (when you don’t need folder structure)
+function queueFiles(fileList) {
+  queueFilesSimple(fileList);
+}
+
+async function startMultipartUploadWithKey(file, key) {
   const container = document.createElement("div");
   container.className = "item";
-  container.innerHTML = `<div><b>${file.name}</b> — ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+  container.innerHTML = `<div><b>${key}</b> — ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
     <div class="progressbar"><span></span></div>`;
   els("uploads").appendChild(container);
   const bar = container.querySelector(".progressbar > span");
