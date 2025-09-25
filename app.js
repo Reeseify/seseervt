@@ -147,7 +147,7 @@ async function bootShowDetail() {
     if(sel) sel.selectedIndex = si;
 
     const items = s.videos.map(v => ({
-      href: `watch.html?src=${encodeURIComponent(v.src)}&title=${encodeURIComponent((data.name||'') + ' — ' + v.name)}`,
+      href: `watch.html?e=${encodeURIComponent(v.h || v.id)}`,
       img: v.thumb || data.logo,
       label: v.name
     }));
@@ -183,7 +183,7 @@ async function bootShowDetail() {
   }
 }
 
-async function bootWatch() {
+
   const p = new URLSearchParams(location.search);
   const src = p.get("src");
   const title = p.get("title") || "Now Playing";
