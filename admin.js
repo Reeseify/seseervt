@@ -1,4 +1,193 @@
-const API_BASE="https://api.reeses.ca";const els=e=>document.getElementById(e),tokenKey="admin_token";function getToken(){return localStorage.getItem(tokenKey)}function setToken(e){localStorage.setItem(tokenKey,e)}function clearToken(){localStorage.removeItem(tokenKey)}function authHeaders(){const e=getToken();return e?{Authorization:"Bearer "+e}:{}}document.addEventListener("DOMContentLoaded",()=>{els("loginBtn").onclick=doLogin,els("logoutBtn").onclick=()=>{clearToken(),location.reload()},els("loadBtn").onclick=loadList,els("refreshBtn").onclick=loadList,els("filePick").addEventListener("change",e=>queueFiles(e.target.files));const e=els("drop");["dragenter","dragover"].forEach(t=>e.addEventListener(t,t=>{t.preventDefault(),t.stopPropagation(),e.style.background="rgba(255,255,255,.06)"})),["dragleave","drop"].forEach(t=>e.addEventListener(t,t=>{t.preventDefault(),t.stopPropagation(),e.style.background="transparent"})),e.addEventListener("drop",e=>queueFiles(e.dataTransfer.files)),getToken()?(showApp(),loadList()):showLogin()});function showLogin(){els("login").style.display="",els("controls").style.display="none",els("listing").style.display="none",els("uploader").style.display="none"}function showApp(){els("login").style.display="none",els("controls").style.display="",els("listing").style.display="",els("uploader").style.display=""}async function doLogin(){const e=els("adminUser").value.trim(),t=els("adminPass").value;els("loginMsg").textContent="...";try{const s=await fetch(API_BASE+"/api/admin/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username:e,password:t})});if(!s.ok)throw new Error("Login failed");const o=await s.json();setToken(o.token),els("whoami").textContent=e,els("loginMsg").textContent="Signed in.",showApp(),loadList()}catch(e){console.error(e),els("loginMsg").textContent="Invalid credentials."}}async function loadList(){const e=els("path").value.trim(),t=await fetch(API_BASE+"/api/admin/list?prefix="+encodeURIComponent(e),{headers:authHeaders()});if(!t.ok)return void alert("List failed");const s=await t.json(),o=els("list");o.innerHTML="";for(const t of s.prefixes){const s=document.createElement("div");s.className="item",s.innerHTML=`<div class="path">📁 ${t}</div>
-      <div class="rowx"><button class="btn secondary">Open</button></div>`,s.querySelector("button").onclick=(()=>{els("path").value=(e?e.endsWith("/")?e:e+"/":"")+t+"/",loadList()}),o.appendChild(s)}for(const t of s.objects){const s=document.createElement("div");s.className="item monosmall";const n=(t.size/1024/1024).toFixed(2);s.innerHTML=`<div>📄 ${t.key}</div><div class="muted">${n} MB</div>
-      <div class="rowx"><button class="btn secondary del">Delete</button></div>`,s.querySelector(".del").onclick=(()=>delObject(t.key)),o.appendChild(s)}}async function delObject(e){if(!confirm("Delete "+e+"?"))return;const t=await fetch(API_BASE+"/api/admin/delete",{method:"POST",headers:{"content-type":"application/json",...authHeaders()},body:JSON.stringify({key:e})});t.ok?loadList():alert("Delete failed")}function queueFiles(e){const t=els("path").value.trim();[...e].forEach(e=>startMultipartUpload(t,e))}async function startMultipartUpload(e,t){const s=e&&!e.endsWith("/")?e+"/":e||"",o=s+t.name,n=document.createElement("div");n.className="item",n.innerHTML=`<div><b>${t.name}</b> — ${(t.size/1024/1024).toFixed(2)} MB</div>
-    <div class="progressbar"><span></span></div>`,els("uploads").appendChild(n);const a=n.querySelector(".progressbar > span"),i=await fetch(API_BASE+"/api/admin/multipart/start",{method:"POST",headers:{"content-type":"application/json",...authHeaders()},body:JSON.stringify({key:o})});if(!i.ok)return void(n.innerHTML+='<div class="muted">Start failed</div>');const{uploadId:d,partSize:r}=await i.json(),l=[];const c=r||8*1024*1024,u=Math.ceil(t.size/c);for(let e=1;e<=u;e++){const s=(e-1)*c,i=Math.min(s+c,t.size),r=t.slice(s,i),p=await fetch(API_BASE+"/api/admin/multipart/uploadURL",{method:"POST",headers:{"content-type":"application/json",...authHeaders()},body:JSON.stringify({key:o,uploadId:d,partNumber:e})});if(!p.ok)return void(n.innerHTML+='<div class="muted">URL failed</div>');const{url:m}=await p.json(),h=await fetch(m,{method:"PUT",body:r});if(!h.ok)return void(n.innerHTML+='<div class="muted">PUT failed</div>');const f=h.headers.get("etag");l.push({partNumber:e,etag:f}),a.style.width=Math.round(e/u*100)+"%"}const p=await fetch(API_BASE+"/api/admin/multipart/complete",{method:"POST",headers:{"content-type":"application/json",...authHeaders()},body:JSON.stringify({key:o,uploadId:d,parts:l})});p.ok?(a.style.width="100%",n.innerHTML+="<div>✅ Uploaded</div>",loadList()):n.innerHTML+='<div class="muted">Complete failed</div>'}
+// Admin browser/uploader for Cloudflare R2 via Worker (uploads proxied through Worker)
+const API_BASE = "https://api.reeses.ca";
+const els = (id) => document.getElementById(id);
+
+// --- Session handling (JWT stored in localStorage) ---
+const tokenKey = "admin_token";
+function getToken() { return localStorage.getItem(tokenKey); }
+function setToken(t) { localStorage.setItem(tokenKey, t); }
+function clearToken() { localStorage.removeItem(tokenKey); }
+function authHeaders() {
+  const t = getToken();
+  return t ? { Authorization: "Bearer " + t } : {};
+}
+
+// --- UI wiring ---
+document.addEventListener("DOMContentLoaded", () => {
+  const drop = els("drop");
+  ["dragenter", "dragover"].forEach((ev) =>
+    drop?.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      drop.style.background = "rgba(255,255,255,.06)";
+    })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    drop?.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      drop.style.background = "transparent";
+    })
+  );
+  drop?.addEventListener("drop", (e) => queueFiles(e.dataTransfer.files));
+
+  els("loginBtn")?.addEventListener("click", doLogin);
+  els("logoutBtn")?.addEventListener("click", () => { clearToken(); location.reload(); });
+  els("loadBtn")?.addEventListener("click", loadList);
+  els("refreshBtn")?.addEventListener("click", loadList);
+  els("filePick")?.addEventListener("change", (e) => queueFiles(e.target.files));
+
+  if (getToken()) {
+    showApp();
+    loadList();
+  } else {
+    showLogin();
+  }
+});
+
+function showLogin() {
+  els("login").style.display = "";
+  els("controls").style.display = "none";
+  els("listing").style.display = "none";
+  els("uploader").style.display = "none";
+}
+function showApp() {
+  els("login").style.display = "none";
+  els("controls").style.display = "";
+  els("listing").style.display = "";
+  els("uploader").style.display = "";
+}
+
+// --- Login ---
+async function doLogin() {
+  const username = els("adminUser").value.trim();
+  const password = els("adminPass").value;
+  els("loginMsg").textContent = "...";
+  try {
+    const res = await fetch(API_BASE + "/api/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) throw new Error("Login failed");
+    const data = await res.json();
+    setToken(data.token);
+    els("whoami").textContent = username;
+    els("loginMsg").textContent = "Signed in.";
+    showApp();
+    loadList();
+  } catch (e) {
+    console.error(e);
+    els("loginMsg").textContent = "Invalid credentials.";
+  }
+}
+
+// --- List current path ---
+async function loadList() {
+  const path = els("path").value.trim();
+  const res = await fetch(
+    API_BASE + "/api/admin/list?prefix=" + encodeURIComponent(path),
+    { headers: authHeaders() }
+  );
+  if (!res.ok) { alert("List failed"); return; }
+  const data = await res.json(); // { prefixes:[], objects:[{key,size,uploaded}] }
+  const list = els("list");
+  list.innerHTML = "";
+
+  // Folders
+  for (const p of data.prefixes) {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<div class="path">📁 ${p}</div>
+      <div class="rowx"><button class="btn secondary">Open</button></div>`;
+    div.querySelector("button").onclick = () => {
+      els("path").value =
+        (path ? (path.endsWith("/") ? path : path + "/") : "") + p + "/";
+      loadList();
+    };
+    list.appendChild(div);
+  }
+
+  // Files
+  for (const o of data.objects) {
+    const div = document.createElement("div");
+    div.className = "item monosmall";
+    const sizeMB = (o.size / 1024 / 1024).toFixed(2);
+    div.innerHTML = `<div>📄 ${o.key}</div><div class="muted">${sizeMB} MB</div>
+      <div class="rowx"><button class="btn secondary del">Delete</button></div>`;
+    div.querySelector(".del").onclick = () => delObject(o.key);
+    list.appendChild(div);
+  }
+}
+
+// --- Delete ---
+async function delObject(key) {
+  if (!confirm("Delete " + key + "?")) return;
+  const res = await fetch(API_BASE + "/api/admin/delete", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ key }),
+  });
+  if (!res.ok) { alert("Delete failed"); return; }
+  loadList();
+}
+
+// --- Upload queue ---
+function queueFiles(fileList) {
+  const path = els("path").value.trim();
+  [...fileList].forEach((f) => startMultipartUpload(path, f));
+}
+
+// --- Multipart upload flow (via Worker) ---
+async function startMultipartUpload(prefix, file) {
+  const base = prefix && !prefix.endsWith("/") ? prefix + "/" : (prefix || "");
+  const key = base + file.name;
+  const container = document.createElement("div");
+  container.className = "item";
+  container.innerHTML = `<div><b>${file.name}</b> — ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+    <div class="progressbar"><span></span></div>`;
+  els("uploads").appendChild(container);
+  const bar = container.querySelector(".progressbar > span");
+
+  // 1) start
+  const startRes = await fetch(API_BASE + "/api/admin/multipart/start", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ key }),
+  });
+  if (!startRes.ok) { container.innerHTML += '<div class="muted">Start failed</div>'; return; }
+  const { uploadId, partSize } = await startRes.json();
+
+  // 2) upload parts (no presigned URL; POST to Worker)
+  const etags = [];
+  const chunkSize = partSize || 8 * 1024 * 1024;
+  const totalParts = Math.ceil(file.size / chunkSize);
+  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+    const start = (partNumber - 1) * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const blob = file.slice(start, end);
+
+    const putRes = await fetch(
+      API_BASE +
+        "/api/admin/multipart/put" +
+        "?key=" + encodeURIComponent(key) +
+        "&uploadId=" + encodeURIComponent(uploadId) +
+        "&partNumber=" + encodeURIComponent(partNumber),
+      { method: "POST", headers: authHeaders(), body: blob }
+    );
+    if (!putRes.ok) { container.innerHTML += '<div class="muted">PUT failed</div>'; return; }
+    const { etag } = await putRes.json();
+
+    etags.push({ partNumber, etag: String(etag || "").replace(/"/g, "") });
+    bar.style.width = Math.round((partNumber / totalParts) * 100) + "%";
+  }
+
+  // 3) complete
+  const compRes = await fetch(API_BASE + "/api/admin/multipart/complete", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ key, uploadId, parts: etags }),
+  });
+  if (!compRes.ok) { container.innerHTML += '<div class="muted">Complete failed</div>'; return; }
+  bar.style.width = "100%";
+  container.innerHTML += "<div>✅ Uploaded</div>";
+  loadList();
+}
